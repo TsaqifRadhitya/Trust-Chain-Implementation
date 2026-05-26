@@ -9,7 +9,7 @@ Sistem ini dibangun menggunakan arsitektur *Microservices* yang diorkestrasi mel
 ### 1. API Gateway (Nginx)
 Berperan sebagai *Reverse Proxy* dan pintu masuk utama (*entry point*) untuk seluruh *traffic* eksternal. Nginx juga memvalidasi setiap token akses secara terpusat dengan memanfaatkan modul `auth_request` ke Auth Service.
 
-### 2. Frontend (`/fe`)
+### 2. Frontend (`/frontend`)
 Aplikasi web *Single Page Application* (SPA) interaktif.
 - **Tech Stack**: React 19, TypeScript, Vite, TailwindCSS v4, React Router, dan React Query.
 - **Fitur Utama**: Dashboard pengguna, manajemen *settings* integrasi ERP, dan tampilan antarmuka Blockchain Explorer untuk melacak blok dan transaksi secara *real-time*.
@@ -17,6 +17,7 @@ Aplikasi web *Single Page Application* (SPA) interaktif.
 ### 3. Backend Services (`/backend`)
 Layanan API internal yang memproses logika bisnis dan database. Dibangun menggunakan **Go (Golang)** dengan *framework* **Gin**.
 - **Auth Service**: Menangani proses otentikasi (JWT), manajemen akun, penyimpanan konfigurasi ERP pengguna, dan verifikasi internal token untuk API Gateway.
+- **Model Service**: Layanan API Machine Learning berbasis Python dan FastAPI untuk mendeteksi anomali/fraud pada transaksi menggunakan model Ensemble (Isolation Forest + LSTM).
 - **Explorer Service** (Spesifikasi): Mengelola sinkronisasi data (*Background Worker*) yang mengambil data dari ERP klien, mencatatnya ke dalam blockchain, dan menyediakan data tersebut untuk *Frontend Explorer*.
 - **Database**: Menggunakan PostgreSQL 15.
 
@@ -31,12 +32,12 @@ Pastikan Anda telah menginstal [Docker](https://www.docker.com/) dan [Docker Com
    ```bash
    docker-compose up --build -d
    ```
-   *Perintah ini akan menjalankan container untuk Nginx (port 8080), Auth Backend, dan PostgreSQL secara bersamaan.*
+   *Perintah ini akan menjalankan container untuk Nginx (port 8080 & 8000), Auth Backend, Model Service, Frontend, dan PostgreSQL secara bersamaan.*
 
 2. **Menjalankan Frontend (Lokal)**
-   Buka terminal baru, masuk ke folder `fe`, instal dependensi, lalu jalankan *development server*:
+   Buka terminal baru, masuk ke folder `frontend`, instal dependensi, lalu jalankan *development server*:
    ```bash
-   cd fe
+   cd frontend
    npm install
    npm run dev
    ```
@@ -54,7 +55,7 @@ Untuk detail lebih lanjut mengenai masing-masing komponen, Anda dapat membaca sp
 - `nginx/spec.md`: Spesifikasi dan cara kerja API Gateway.
 - `backend/auth_service/spec.md`: Spesifikasi API Auth & Settings, beserta Endpoint Internal (Service-to-Service).
 - `explorer_service/spec.md`: Spesifikasi API Blockchain Explorer & Background Data Sync Worker.
-- `fe/implementation.md`: Rancangan arsitektur dan UI untuk implementasi fitur Blockchain Explorer di Frontend.
+- `frontend/implementation.md`: Rancangan arsitektur dan UI untuk implementasi fitur Blockchain Explorer di Frontend.
 
 ---
 
@@ -64,7 +65,7 @@ Untuk detail lebih lanjut mengenai masing-masing komponen, Anda dapat membaca sp
 Konfigurasi environment dapat disesuaikan pada file `docker-compose.yaml` (untuk Nginx dan integrasi container) serta `.env` di dalam masing-masing *service* (misal `backend/auth_service/.env`).
 
 ### Frontend
-Buat file `fe/.env` berdasarkan `fe/.env.example` untuk mengatur URL API:
+Buat file `frontend/.env` berdasarkan `frontend/.env.example` untuk mengatur URL API:
 ```env
 VITE_API_BASE_URL=http://localhost:8080/api/v1
 ```
