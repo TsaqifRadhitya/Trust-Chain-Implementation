@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { fetchReports } from '../../../../modules/report';
+import { QUERY_KEYS } from '../../../../constant/query-key';
 
 export function useReports() {
   const reportsQuery = useQuery({
-    queryKey: ['reports'],
+    queryKey: [QUERY_KEYS.REPORTS],
     queryFn: fetchReports,
   });
 

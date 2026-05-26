@@ -1,16 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { fetchTrendData, fetchLiveTransactions } from '../../../../modules/blockchain';
+import { QUERY_KEYS } from '../../../../constant/query-key';
 import type { Transaction } from '../../../../modules/blockchain/type';
 
 export function useDashboard() {
   const trendQuery = useQuery({
-    queryKey: ['trendData'],
+    queryKey: [QUERY_KEYS.TREND_DATA],
     queryFn: fetchTrendData,
   });
 
   const txQuery = useQuery({
-    queryKey: ['liveTransactions'],
+    queryKey: [QUERY_KEYS.LIVE_TRANSACTIONS],
     queryFn: fetchLiveTransactions,
   });
 

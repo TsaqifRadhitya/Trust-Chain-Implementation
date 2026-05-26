@@ -1,9 +1,10 @@
 import { apiClient } from '../../lib/axios';
 import type { Config } from './type';
+import { API_ENDPOINTS } from '../../constant/endpoint';
 
 export async function getConfig(): Promise<Config> {
   try {
-    const response = await apiClient.get('/settings');
+    const response = await apiClient.get(API_ENDPOINTS.SETTINGS.BASE);
     const config = response.data.data;
     
     // Konversi snake_case dari backend ke camelCase untuk komponen frontend
@@ -33,7 +34,7 @@ export async function saveConfig(config: Config): Promise<Config> {
       velocity_limit: config.velocityLimit,
     };
     
-    const response = await apiClient.put('/settings', payload);
+    const response = await apiClient.put(API_ENDPOINTS.SETTINGS.BASE, payload);
     const updatedConfig = response.data.data;
 
     return {
