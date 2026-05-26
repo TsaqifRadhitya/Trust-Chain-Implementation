@@ -129,7 +129,6 @@ export default function TopNav() {
                 >
                   <div className="px-4 py-3 border-b border-slate-700/50">
                     <p className="text-sm font-semibold text-white">{user?.name}</p>
-                    <p className="text-xs text-textMuted">{user?.role}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{user?.email}</p>
                   </div>
                   <button

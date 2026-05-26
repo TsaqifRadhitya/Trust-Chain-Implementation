@@ -7,7 +7,7 @@ import { useAuth } from '../../hooks/AuthContext';
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
-  const [email, setEmail] = useState('admin@corp.com');
+  const [email, setEmail] = useState('admin@trustchain.com');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -109,7 +109,7 @@ export default function Login() {
           </form>
 
           <div className="mt-6 pt-6 border-t border-slate-700/50 text-center">
-            <p className="text-xs text-textMuted">Demo: <span className="text-slate-400 font-mono">admin@corp.com</span> / <span className="text-slate-400 font-mono">password123</span></p>
+            <p className="text-xs text-textMuted">Demo: <span className="text-slate-400 font-mono">admin@trustchain.com</span> / <span className="text-slate-400 font-mono">password123</span></p>
             <p className="text-xs text-textMuted mt-1">Secured by TrustChain Protocol v3.0</p>
           </div>
         </div>
