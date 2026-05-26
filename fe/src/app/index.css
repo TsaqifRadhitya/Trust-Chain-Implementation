@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0B0F19;
+  --color-surface: #1A233A;
+  --color-surfaceHover: #2A3655;
+  --color-primary: #0ea5e9;
+  --color-accent: #10b981;
+  --color-accentHover: #059669;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --color-success: #10b981;
+  --color-text: #f8fafc;
+  --color-textMuted: #94a3b8;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-text antialiased;
+  }
+}
