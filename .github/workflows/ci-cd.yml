@@ -121,8 +121,8 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script_stop: true
           script: |
-            # Pindah ke folder project di VPS (Sesuaikan dengan path di VPS Anda)
-            cd /var/www/trustchain
+            
+            cd /var/www/Trust-Chain-Implementation
             
             # Ambil update kode terbaru
             git pull origin main
