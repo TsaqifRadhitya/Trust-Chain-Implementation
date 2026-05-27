@@ -120,6 +120,7 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script_stop: true
+          command_timeout: 30m
           script: |
             
             cd /var/www/Trust-Chain-Implementation
