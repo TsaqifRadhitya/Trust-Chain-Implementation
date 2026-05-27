@@ -2,46 +2,117 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import joblib
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import load_model
 import os
+import tensorflow as tf
 
-# ==========================================
-# 1. SETUP APLIKASI & LOAD MODEL
-# ==========================================
 app = FastAPI(
     title="TrustChain AI - Fraud Detection API",
-    description="API untuk memprediksi anomali transaksi menggunakan Ensemble (Isolation Forest + LSTM)",
-    version="1.0.0"
+    description="Ensemble Isolation Forest + LSTM",
+    version="2.0.0"
 )
 
-# Global variables untuk model
 iso_forest = None
 scaler = None
 lstm_model = None
 
-# Konfigurasi Bobot Ensemble
 WEIGHT_IF = 0.30
 WEIGHT_LSTM = 0.70
+
+def rebuild_lstm(n_features: int = 19):
+    """Rebuild arsitektur LSTM identik dengan training."""
+    model = tf.keras.Sequential([
+        tf.keras.layers.LSTM(64, input_shape=(1, n_features), return_sequences=True),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.LSTM(32, return_sequences=False),
+        tf.keras.layers.Dropout(0.3),
+        tf.keras.layers.BatchNormalization(),
+        tf.keras.layers.Dense(16, activation='relu'),
+        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dense(1, activation='sigmoid')
+    ])
+    model.compile(optimizer='adam', loss='binary_crossentropy')
+    return model
 
 @app.on_event("startup")
 async def load_ml_models():
     global iso_forest, scaler, lstm_model
-    try:        
-        model_dir = "/app/trustchain_models" 
-        
-        print(f"Loading models from: {model_dir}")
-        iso_forest = joblib.load(os.path.join(model_dir, "isolation_forest.pkl"))
-        scaler = joblib.load(os.path.join(model_dir, "scaler.pkl"))
-        lstm_model = load_model(os.path.join(model_dir, "lstm_model.keras"))
-        
-        print("✅ Semua model berhasil dimuat di dalam Docker!")
-    except Exception as e:
-        print(f"❌ Gagal memuat model di Docker: {e}")
 
-# ==========================================
-# 2. DEFINISI SCHEMA INPUT (PYDANTIC)
-# ==========================================
+    model_dir = "/app/trustchain_models"
+    print(f"Loading models from: {model_dir}")
+    print(f"TensorFlow version : {tf.__version__}")
+
+    try:
+        iso_forest = joblib.load(os.path.join(model_dir, "isolation_forest.pkl"))
+        scaler     = joblib.load(os.path.join(model_dir, "scaler.pkl"))
+        print("✅ Isolation Forest & Scaler loaded")
+    except Exception as e:
+        print(f"❌ Gagal load sklearn models: {e}")
+        return
+
+    # ── Coba 3 strategi load LSTM ──────────────────────────────
+
+    # Strategi 1: TF SavedModel
+    # savedmodel_path = os.path.join(model_dir, "lstm_savedmodel")
+    # if os.path.exists(savedmodel_path):
+    #     try:
+    #         lstm_model = tf.saved_model.load(savedmodel_path)
+    #         # Wrap agar bisa dipanggil seperti model biasa
+    #         lstm_model._is_savedmodel = True
+    #         print("✅ LSTM loaded via TF SavedModel")
+    #         return
+    #     except Exception as e:
+    #         print(f"⚠️  SavedModel gagal: {e}")
+
+    # Strategi 2: Rebuild arsitektur + load weights
+    weights_path = os.path.join(model_dir, "lstm_weights.weights.h5")
+    if os.path.exists(weights_path):
+        try:
+            lstm_model = rebuild_lstm(n_features=19)
+            # Dummy forward pass untuk initialize weights
+            dummy = np.zeros((1, 1, 19), dtype=np.float32)
+            lstm_model.predict(dummy, verbose=0)
+            lstm_model.load_weights(weights_path)
+            lstm_model._is_savedmodel = False
+            print("✅ LSTM loaded via weights")
+            return
+        except Exception as e:
+            print(f"⚠️  Load weights gagal: {e}")
+
+    # Strategi 3: .keras dengan custom_object_scope
+    keras_path = os.path.join(model_dir, "lstm_model.keras")
+    if os.path.exists(keras_path):
+        try:
+            with tf.keras.utils.custom_object_scope({}):
+                lstm_model = tf.keras.models.load_model(
+                    keras_path,
+                    compile=False,
+                    safe_mode=False
+                )
+            lstm_model._is_savedmodel = False
+            print("✅ LSTM loaded via .keras (safe_mode=False)")
+            return
+        except Exception as e:
+            print(f"⚠️  .keras safe_mode=False gagal: {e}")
+
+    print("❌ Semua strategi load LSTM gagal")
+
+
+def predict_lstm(X_input: np.ndarray) -> float:
+    if getattr(lstm_model, '_is_savedmodel', False):
+        infer = lstm_model.signatures.get(
+            "serve", 
+            list(lstm_model.signatures.values())[0]
+        )
+        input_key = list(infer.structured_input_signature[1].keys())[0]
+        tensor_in = tf.constant(X_input, dtype=tf.float32)
+        result    = infer(**{input_key: tensor_in})
+        output_key = list(result.keys())[0]
+        return float(result[output_key].numpy()[0][0])
+    else:
+        return float(lstm_model.predict(X_input, verbose=0)[0][0])
+
+
+# ── Schema ─────────────────────────────────────────────────────
 class TransactionInput(BaseModel):
     vendor_name: str = Field(..., example="Neo Supply International")
     amount_idr: float = Field(..., example=8500000000)
@@ -74,39 +145,32 @@ class PredictionOutput(BaseModel):
     is_fraud: bool
     verdict: str
 
-# ==========================================
-# 3. ENDPOINT PREDIKSI
-# ==========================================
+
+# ── Endpoint ───────────────────────────────────────────────────
 @app.post("/predict", response_model=PredictionOutput)
 async def predict_fraud(tx: TransactionInput):
     if iso_forest is None or scaler is None or lstm_model is None:
-        raise HTTPException(status_code=500, detail="Model belum siap/gagal dimuat dari server.")
+        raise HTTPException(status_code=500, detail="Model belum siap.")
 
-    # Mapping Categorical sesuai Cell 11
     cat_map = {
-        'vendor_category': {'Logistics':0,'Manufacturing':1,'Energy':2, 'Chemicals':3,'Construction':4,'Electronics':5, 'Raw Materials':6,'Engineering':7,'Trading':8},
-        'department':       {'Finance':0,'Procurement':1,'Operations':2, 'Engineering':3,'Logistics':4,'HR':5},
-        'transaction_type': {'Invoice Payment':0,'Advance Payment':1, 'Reimbursement':2,'Purchase Order':3,'Contract Payment':4},
-        'payment_method':   {'Bank Transfer':0,'RTGS':1,'Virtual Account':2, 'SWIFT':3,'Cash':4},
-        'approval_level':   {'L1':0,'L2':1,'L3':2,'L4':3},
+        'vendor_category': {'Logistics':0,'Manufacturing':1,'Energy':2,
+                            'Chemicals':3,'Construction':4,'Electronics':5,
+                            'Raw Materials':6,'Engineering':7,'Trading':8},
+        'department':      {'Finance':0,'Procurement':1,'Operations':2,
+                            'Engineering':3,'Logistics':4,'HR':5},
+        'transaction_type':{'Invoice Payment':0,'Advance Payment':1,
+                            'Reimbursement':2,'Purchase Order':3,'Contract Payment':4},
+        'payment_method':  {'Bank Transfer':0,'RTGS':1,'Virtual Account':2,
+                            'SWIFT':3,'Cash':4},
+        'approval_level':  {'L1':0,'L2':1,'L3':2,'L4':3},
     }
 
     try:
-        # Susun feature array (HARUS SESUAI URUTAN TRAINING)
         row = [
-            tx.amount_idr,
-            tx.hour_of_day,
-            tx.day_of_week,
-            tx.is_weekend,
-            tx.vendor_age_days,
-            tx.vendor_tx_count_30d,
-            tx.amount_vs_vendor_avg,
-            tx.geographic_deviation,
-            tx.tx_velocity_1h,
-            tx.tx_velocity_24h,
-            tx.is_round_number,
-            tx.days_since_last_tx_vendor,
-            tx.ip_country_match,
+            tx.amount_idr, tx.hour_of_day, tx.day_of_week, tx.is_weekend,
+            tx.vendor_age_days, tx.vendor_tx_count_30d, tx.amount_vs_vendor_avg,
+            tx.geographic_deviation, tx.tx_velocity_1h, tx.tx_velocity_24h,
+            tx.is_round_number, tx.days_since_last_tx_vendor, tx.ip_country_match,
             tx.duplicate_score,
             cat_map['vendor_category'].get(tx.vendor_category, 0),
             cat_map['department'].get(tx.department, 0),
@@ -115,20 +179,15 @@ async def predict_fraud(tx: TransactionInput):
             cat_map['approval_level'].get(tx.approval_level, 0),
         ]
 
-        # Preprocessing
-        X_new = scaler.transform([row])
-        
-        # 1. Isolation Forest Prediction
-        iso_s = -iso_forest.score_samples(X_new)[0]
+        X_new        = scaler.transform([row])
+        iso_s        = -iso_forest.score_samples(X_new)[0]
         iso_norm_val = float(np.clip((iso_s - 0.3) / 0.4, 0, 1))
 
-        # 2. LSTM Prediction (reshape to 1 sample, 1 timestep, N features)
-        X_lstm = X_new.reshape(1, 1, -1)
-        lstm_p = float(lstm_model.predict(X_lstm, verbose=0)[0][0])
+        X_lstm   = X_new.reshape(1, 1, -1).astype(np.float32)
+        lstm_p   = predict_lstm(X_lstm)
 
-        # 3. Ensemble
-        ensemble_s = (WEIGHT_IF * iso_norm_val) + (WEIGHT_LSTM * lstm_p)
-        risk_score = int(ensemble_s * 100)
+        ensemble_s    = WEIGHT_IF * iso_norm_val + WEIGHT_LSTM * lstm_p
+        risk_score    = int(ensemble_s * 100)
         is_fraud_pred = bool(ensemble_s >= 0.5)
 
         return PredictionOutput(
@@ -143,11 +202,21 @@ async def predict_fraud(tx: TransactionInput):
         )
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Terjadi kesalahan saat memproses data: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
-# ==========================================
-# 4. ENDPOINT KESEHATAN (HEALTH CHECK)
-# ==========================================
+
 @app.get("/")
 async def root():
-    return {"status": "online", "message": "TrustChain AI API is running!"}
+    return {
+        "status": "online",
+        "message": "TrustChain AI API is running!",
+        "tf_version": tf.__version__
+    }
+
+@app.get("/health")
+async def health():
+    return {
+        "iso_forest": iso_forest is not None,
+        "scaler": scaler is not None,
+        "lstm_model": lstm_model is not None,
+    }

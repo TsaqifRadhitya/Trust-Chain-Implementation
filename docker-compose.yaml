@@ -40,6 +40,11 @@ services:
       - PORT=8000
     ports:
       - "8001:8000"
+        
+    volumes:
+      - ./backend/model_service:/app
+      
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   db:
     image: postgres:15-alpine
