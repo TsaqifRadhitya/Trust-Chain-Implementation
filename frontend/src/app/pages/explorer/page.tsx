@@ -20,13 +20,14 @@ export default function BlockchainExplorer() {
     try {
       await verify(hash);
       setSearched(true);
-    } catch (err) {
+    } catch {
       // Error handled by hook or console
     }
   };
 
-  const getSanitizedPayload = (payload: any) => {
+  const getSanitizedPayload = (payload: Record<string, unknown>) => {
     if (isPublic) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { signature, ...sanitized } = payload;
       return sanitized;
     }

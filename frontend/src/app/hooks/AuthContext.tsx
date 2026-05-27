@@ -31,8 +31,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: true };
       }
       return { success: false, error: result.error || 'Login gagal' };
-    } catch (error: any) {
-      return { success: false, error: error.message || 'Login gagal' };
+    } catch (error: unknown) {
+      return { success: false, error: (error as Error).message || 'Login gagal' };
     }
   }, []);
 
@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');

@@ -21,8 +21,9 @@ export async function loginUser(email: string, password: string): Promise<LoginR
         name: user.name,
       },
     };
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Login failed';
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { error?: string, message?: string } } };
+    const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Login failed';
     return {
       success: false,
       user: null,

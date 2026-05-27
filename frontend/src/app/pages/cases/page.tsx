@@ -41,8 +41,8 @@ export default function CaseManagement() {
       } else {
         toast(`${caseId} ditandai aman dan diselesaikan.`, 'success');
       }
-    } catch (e: any) {
-      toast(`Gagal mengubah status: ${e.message}`, 'error');
+    } catch (e: unknown) {
+      toast(`Gagal mengubah status: ${(e as Error).message}`, 'error');
     }
   };
 

@@ -16,6 +16,7 @@ export default function Configuration() {
 
   useEffect(() => {
     if (config) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setErpType(config.erpType);
       setEndpoint(config.endpoint);
       setApiKey(config.apiKey);
@@ -42,8 +43,8 @@ export default function Configuration() {
         velocityLimit,
       });
       toast('Konfigurasi berhasil disimpan!', 'success');
-    } catch (e: any) {
-      toast(`Gagal menyimpan: ${e.message}`, 'error');
+    } catch (e: unknown) {
+      toast(`Gagal menyimpan: ${(e as Error).message}`, 'error');
     }
   };
 

@@ -19,6 +19,7 @@ export function useDashboard() {
 
   useEffect(() => {
     if (txQuery.data) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTxs(txQuery.data);
     }
   }, [txQuery.data]);
