@@ -128,6 +128,9 @@ jobs:
             # Ambil update kode terbaru
             git pull origin main
             
+            # Hentikan container lama yang mungkin masih menyangkut
+            docker-compose down
+            
             # Rebuild dan jalankan docker container di background
             docker-compose up -d --build
             
