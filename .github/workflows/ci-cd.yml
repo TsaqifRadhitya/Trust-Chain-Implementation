@@ -184,8 +184,9 @@ jobs:
             
             cd /var/www/Trust-Chain-Implementation
             
-            # Ambil update kode terbaru
-            git pull origin main
+            # Reset paksa VPS agar sama persis dengan GitHub (mengabaikan perubahan lokal/cache)
+            git fetch --all
+            git reset --hard origin/main
             
             # Hentikan container lama yang mungkin masih menyangkut
             docker-compose down

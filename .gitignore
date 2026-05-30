@@ -1,3 +1,28 @@
+# Environment files
 frontend/.env
 backend/auth_service/.env
 backend/explorer_service/.env
+
+# Node
+node_modules/
+dist/
+build/
+.npm/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env/
+.pytest_cache/
+
+# Go
+/backend/auth_service/auth_service
+/backend/explorer_service/explorer_service
+/backend/dummy_api/dummy_api
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store
