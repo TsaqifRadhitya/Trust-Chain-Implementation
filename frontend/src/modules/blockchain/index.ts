@@ -33,8 +33,10 @@ const INITIAL_TX_FEED: Transaction[] = [
   { id: 'TX-8824', partner: 'Apex Corp', amount: '$12,400.00', status: 'warning', aiScore: 45 },
 ];
 
-function getStoredCases(): Case[] {
-  const stored = localStorage.getItem('tc_cases');
+import { apiClient } from '../../lib/axios';
+
+function getStoredCaseStatuses(): Record<string, CaseStatus> {
+  const stored = localStorage.getItem('tc_case_statuses');
   if (stored) {
     try {
       return JSON.parse(stored);
@@ -42,26 +44,79 @@ function getStoredCases(): Case[] {
       // Fallback
     }
   }
-  localStorage.setItem('tc_cases', JSON.stringify(INITIAL_CASES));
-  return INITIAL_CASES;
+  return {};
 }
 
 export async function fetchCases(): Promise<Case[]> {
-  await new Promise((res) => setTimeout(res, 500));
-  return getStoredCases();
+  try {
+    const response = await apiClient.get('/explorer/transactions?limit=100');
+    const txs = response.data.data || [];
+    
+    // Filter fraud transactions
+    const fraudTxs = txs.filter((tx: any) => tx.is_fraud === true);
+    
+    if (fraudTxs.length === 0) {
+      return [{
+        id: 'DBG-001',
+        txId: 'TX-DEBUG',
+        date: new Date().toISOString().split('T')[0],
+        status: 'Open',
+        partner: `No fraud found in ${txs.length} txs`,
+        amount: 'Rp0',
+        risk: 99,
+        type: 'DEBUG'
+      }];
+    }
+
+    const statuses = getStoredCaseStatuses();
+    
+    return fraudTxs.map((tx: any) => {
+      // Extract short ID
+      const shortId = `CASE-${tx.hash.substring(2, 6).toUpperCase()}`;
+      
+      // Try to parse original ERP payload for context
+      let partner = tx.to || 'Unknown Vendor';
+      try {
+        const payload = JSON.parse(tx.data);
+        partner = payload.vendor_name || partner;
+      } catch (e) {}
+
+      // Find saved status, default to Open
+      const savedStatus = statuses[shortId] || 'Open';
+
+      // Format currency (IDR)
+      const amountFormat = new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR'
+      }).format(tx.value);
+
+      return {
+        id: shortId,
+        txId: `TX-${tx.hash.substring(2, 8).toUpperCase()}`,
+        date: new Date(tx.timestamp).toISOString().split('T')[0],
+        status: savedStatus,
+        partner: partner,
+        amount: amountFormat,
+        risk: tx.risk_score,
+        type: tx.flag_reason || tx.verdict || 'Anomaly',
+        originalHash: tx.hash // keep original hash for reference
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching cases from API:', error);
+    // Fallback to initial cases if API fails
+    return INITIAL_CASES;
+  }
 }
 
 export async function updateCaseStatus(caseId: string, status: CaseStatus): Promise<Case> {
-  await new Promise((res) => setTimeout(res, 500));
-  const cases = getStoredCases();
-  const index = cases.findIndex((c) => c.id === caseId);
-  if (index === -1) {
-    throw new Error('Case not found');
-  }
-
-  cases[index].status = status;
-  localStorage.setItem('tc_cases', JSON.stringify(cases));
-  return cases[index];
+  const statuses = getStoredCaseStatuses();
+  statuses[caseId] = status;
+  localStorage.setItem('tc_case_statuses', JSON.stringify(statuses));
+  
+  // We need to return a dummy case to satisfy the type, 
+  // the hook will invalidate and refetch anyway.
+  return { id: caseId, status } as Case;
 }
 
 export async function fetchTrendData(): Promise<TrendData[]> {

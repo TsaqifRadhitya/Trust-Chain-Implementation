@@ -144,6 +144,7 @@ class PredictionOutput(BaseModel):
     ensemble_score: float
     is_fraud: bool
     verdict: str
+    flag_reason: str
 
 
 # ── Endpoint ───────────────────────────────────────────────────
@@ -211,6 +212,30 @@ async def predict_fraud(
         risk_score    = int(ensemble_s * 100)
         is_fraud_pred = bool(ensemble_s >= 0.5)
 
+        flag_reason = "Normal"
+        if is_fraud_pred:
+            reasons = []
+            if volume_penalty >= geo_penalty and volume_penalty >= velocity_penalty and volume_penalty > 0:
+                reasons.append("Volume Anomaly")
+            if geo_penalty >= volume_penalty and geo_penalty >= velocity_penalty and geo_penalty > 0:
+                reasons.append("Geographic Mismatch")
+            if velocity_penalty >= volume_penalty and velocity_penalty >= geo_penalty and velocity_penalty > 0:
+                reasons.append("Velocity Check")
+                
+            if not reasons:
+                if tx.duplicate_score > 0.5:
+                    reasons.append("Duplicate Detection")
+                elif tx.tx_velocity_1h > 5:
+                    reasons.append("Velocity Check")
+                elif tx.amount_vs_vendor_avg > 2:
+                    reasons.append("Volume Anomaly")
+                elif tx.geographic_deviation > 0.5:
+                    reasons.append("Geographic Mismatch")
+                else:
+                    reasons.append("AI Pattern Anomaly")
+                    
+            flag_reason = " & ".join(reasons)
+
         return PredictionOutput(
             vendor_name=tx.vendor_name,
             amount_idr=tx.amount_idr,
@@ -219,7 +244,8 @@ async def predict_fraud(
             lstm_prob=round(lstm_p, 3),
             ensemble_score=round(ensemble_s, 3),
             is_fraud=is_fraud_pred,
-            verdict="🚨 FRAUD" if is_fraud_pred else "✅ NORMAL"
+            verdict="🚨 FRAUD" if is_fraud_pred else "✅ NORMAL",
+            flag_reason=flag_reason
         )
 
     except Exception as e:

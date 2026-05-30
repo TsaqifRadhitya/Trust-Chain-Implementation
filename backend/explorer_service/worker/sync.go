@@ -39,7 +39,7 @@ func NewSyncWorker(b repository.BlockRepository, t repository.TransactionReposit
 
 func (w *SyncWorker) Start() {
 	log.Println("Starting Background Sync Worker...")
-	ticker := time.NewTicker(30 * time.Minute)
+	ticker := time.NewTicker(30 * time.Second)
 
 	go func() {
 		for {
@@ -124,6 +124,7 @@ func (w *SyncWorker) syncData() {
 
 		isFraud, _ := modelOutput["is_fraud"].(bool)
 		verdict, _ := modelOutput["verdict"].(string)
+		flagReason, _ := modelOutput["flag_reason"].(string)
 		riskScoreFloat, _ := modelOutput["risk_score"].(float64)
 		riskScore := int(riskScoreFloat)
 
@@ -182,6 +183,7 @@ func (w *SyncWorker) syncData() {
 			Timestamp:   time.Now(),
 			IsFraud:     isFraud,
 			Verdict:     verdict,
+			FlagReason:  flagReason,
 			RiskScore:   riskScore,
 			Data:        string(bodyBytes),
 		}
