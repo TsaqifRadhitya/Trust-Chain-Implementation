@@ -57,5 +57,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  dummy_api:
+    build:
+      context: ./backend/dummy_api
+    ports:
+      - "8082:8080"
+
 volumes:
   pgdata:
