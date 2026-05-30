@@ -17,6 +17,8 @@ services:
       context: ./frontend
       args:
         - VITE_API_BASE_URL=/api/v1
+    ports:
+      - "5173:5173"
   backend:
     build:
       context: ./backend/auth_service
@@ -56,6 +58,30 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  dummy_api:
+    build:
+      context: ./backend/dummy_api
+    ports:
+      - "8082:8080"
+
+  explorer_service:
+    build:
+      context: ./backend/explorer_service
+    environment:
+      - PORT=8080
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=auth_service
+      - DB_SSLMODE=disable
+      - ERP_API_URL=http://dummy_api:8080/predict
+      - MODEL_API_URL=http://model_service:8000/predict
+    depends_on:
+      - db
+      - dummy_api
+      - model_service
 
 volumes:
   pgdata:

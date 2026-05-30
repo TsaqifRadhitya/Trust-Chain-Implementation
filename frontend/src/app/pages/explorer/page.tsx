@@ -9,7 +9,7 @@ export default function BlockchainExplorer() {
   const [hash, setHash] = useState('');
   const [searched, setSearched] = useState(false);
   const { companyId } = useParams();
-  const { data, isLoading, verify } = useExplorer();
+  const { data, isLoading, error, verify } = useExplorer();
 
   const isPublic = !!companyId;
 
@@ -22,6 +22,7 @@ export default function BlockchainExplorer() {
       setSearched(true);
     } catch {
       // Error handled by hook or console
+      setSearched(true);
     }
   };
 
@@ -52,7 +53,7 @@ export default function BlockchainExplorer() {
             type="text" 
             value={hash}
             onChange={(e) => setHash(e.target.value)}
-            placeholder="Search by Txn Hash, Block Number, or Address..." 
+            placeholder="Search by Txn Hash..." 
             className="flex-1 bg-transparent border-none focus:ring-0 text-white px-4 placeholder-slate-500"
           />
           <button 
@@ -71,7 +72,18 @@ export default function BlockchainExplorer() {
         </div>
       )}
 
-      {searched && !isLoading && data && (
+      {searched && !isLoading && error && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-500/10 border border-red-500/50 text-red-500 p-6 rounded-2xl text-center"
+        >
+          <p className="font-bold text-lg">Transaction Not Found</p>
+          <p className="text-sm mt-1">We couldn't find a transaction with the given hash on the TrustChain network.</p>
+        </motion.div>
+      )}
+
+      {searched && !isLoading && !error && data && (
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -95,7 +107,7 @@ export default function BlockchainExplorer() {
               <div>
                 <p className="text-xs text-textMuted mb-1">Status</p>
                 <p className="text-white font-medium flex items-center">
-                  <CheckCircle className="w-4 h-4 text-success mr-2" /> Confirmed (1,402 Block Confirmations)
+                  <CheckCircle className="w-4 h-4 text-success mr-2" /> Confirmed (Block #{data.blockHeight})
                 </p>
               </div>
               <div>

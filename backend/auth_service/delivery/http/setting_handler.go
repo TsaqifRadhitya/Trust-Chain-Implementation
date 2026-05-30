@@ -24,8 +24,8 @@ func NewSettingHandler(r *gin.RouterGroup, u domain.SettingUsecase) {
 
 type UpdateSettingRequest struct {
 	ErpType           string `json:"erp_type" binding:"required"`
-	Endpoint          string `json:"endpoint" binding:"required,url"`
-	ApiKey            string `json:"api_key" binding:"required"`
+	Endpoint          string `json:"endpoint" binding:"required"`
+	ApiKey            string `json:"api_key"`
 	VolumeSensitivity int    `json:"volume_sensitivity" binding:"min=0,max=100"`
 	GeoThreshold      int    `json:"geo_threshold" binding:"min=0,max=100"`
 	VelocityLimit     int    `json:"velocity_limit" binding:"min=0,max=100"`
