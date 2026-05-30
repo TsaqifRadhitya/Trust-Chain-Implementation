@@ -9,6 +9,7 @@ export interface Case {
   amount: string;
   risk: number;
   type: string;
+  originalHash: string;
 }
 
 export type TxStatus = 'safe' | 'warning' | 'flagged';
@@ -32,11 +33,6 @@ export interface VerifyTxResponse {
   timestamp: string;
   from: string;
   to: string;
-  payload: {
-    txId: string;
-    aiScore: number;
-    flags: string[];
-    model_version: string;
-    signature: string;
-  };
+  blockHeight: number;
+  payload: Record<string, unknown>;
 }

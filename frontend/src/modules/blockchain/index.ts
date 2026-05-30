@@ -1,11 +1,11 @@
 import type { Case, CaseStatus, Transaction, TrendData, VerifyTxResponse } from './type';
 
 const INITIAL_CASES: Case[] = [
-  { id: 'CASE-092', txId: 'TX-8823', date: '2026-04-24', status: 'Open', partner: 'Neo Supply', amount: '$2,100,000.00', risk: 89, type: 'Volume Anomaly' },
-  { id: 'CASE-091', txId: 'TX-8110', date: '2026-04-23', status: 'In Review', partner: 'Apex Corp', amount: '$450,000.00', risk: 72, type: 'Geographic Mismatch' },
-  { id: 'CASE-090', txId: 'TX-7994', date: '2026-04-22', status: 'Resolved', partner: 'LogisX Energy', amount: '$12,400.00', risk: 45, type: 'Velocity Check' },
-  { id: 'CASE-089', txId: 'TX-7821', date: '2026-04-21', status: 'Open', partner: 'CyberLog', amount: '$890,000.00', risk: 81, type: 'Duplicate Detection' },
-  { id: 'CASE-088', txId: 'TX-7700', date: '2026-04-20', status: 'In Review', partner: 'Global Manuf.', amount: '$312,000.00', risk: 63, type: 'Volume Anomaly' },
+  { id: 'CASE-092', txId: 'TX-8823', date: '2026-04-24', status: 'Open', partner: 'Neo Supply', amount: '$2,100,000.00', risk: 89, type: 'Volume Anomaly', originalHash: '0x1234567890abcdef' },
+  { id: 'CASE-091', txId: 'TX-8110', date: '2026-04-23', status: 'In Review', partner: 'Apex Corp', amount: '$450,000.00', risk: 72, type: 'Geographic Mismatch', originalHash: '0xabcdef1234567890' },
+  { id: 'CASE-090', txId: 'TX-7994', date: '2026-04-22', status: 'Resolved', partner: 'LogisX Energy', amount: '$12,400.00', risk: 45, type: 'Velocity Check', originalHash: '0xdeadbeefdeadbeef' },
+  { id: 'CASE-089', txId: 'TX-7821', date: '2026-04-21', status: 'Open', partner: 'CyberLog', amount: '$890,000.00', risk: 81, type: 'Duplicate Detection', originalHash: '0xcafebabecafebabe' },
+  { id: 'CASE-088', txId: 'TX-7700', date: '2026-04-20', status: 'In Review', partner: 'Global Manuf.', amount: '$312,000.00', risk: 63, type: 'Volume Anomaly', originalHash: '0x0987654321fedcba' },
 ];
 
 export const FLAG_REASONS: Record<string, string> = {
@@ -47,13 +47,28 @@ function getStoredCaseStatuses(): Record<string, CaseStatus> {
   return {};
 }
 
+interface BackendTransaction {
+  hash: string;
+  block_height: number;
+  timestamp: string;
+  status: string;
+  from: string;
+  to: string;
+  value: number;
+  data: string;
+  is_fraud: boolean;
+  risk_score: number;
+  flag_reason: string;
+  verdict: string;
+}
+
 export async function fetchCases(): Promise<Case[]> {
   try {
     const response = await apiClient.get('/explorer/transactions?limit=100');
-    const txs = response.data.data || [];
+    const txs: BackendTransaction[] = response.data.data || [];
     
     // Filter fraud transactions
-    const fraudTxs = txs.filter((tx: any) => tx.is_fraud === true);
+    const fraudTxs = txs.filter((tx) => tx.is_fraud === true);
     
     if (fraudTxs.length === 0) {
       return [{
@@ -64,22 +79,25 @@ export async function fetchCases(): Promise<Case[]> {
         partner: `No fraud found in ${txs.length} txs`,
         amount: 'Rp0',
         risk: 99,
-        type: 'DEBUG'
+        type: 'DEBUG',
+        originalHash: '0x000'
       }];
     }
 
     const statuses = getStoredCaseStatuses();
     
-    return fraudTxs.map((tx: any) => {
+    return fraudTxs.map((tx) => {
       // Extract short ID
       const shortId = `CASE-${tx.hash.substring(2, 6).toUpperCase()}`;
       
       // Try to parse original ERP payload for context
       let partner = tx.to || 'Unknown Vendor';
       try {
-        const payload = JSON.parse(tx.data);
+        const payload = JSON.parse(tx.data) as { vendor_name?: string };
         partner = payload.vendor_name || partner;
-      } catch (e) {}
+      } catch {
+        // Ignored
+      }
 
       // Find saved status, default to Open
       const savedStatus = statuses[shortId] || 'Open';
@@ -130,20 +148,32 @@ export async function fetchLiveTransactions(): Promise<Transaction[]> {
 }
 
 export async function verifyTx(hash: string): Promise<VerifyTxResponse> {
-  await new Promise((res) => setTimeout(res, 1200));
+  try {
+    const response = await apiClient.get(`/explorer/transactions/${hash}`);
+    const tx = response.data.data;
+    
+    let payload = {};
+    try {
+      payload = JSON.parse(tx.data) as Record<string, unknown>;
+    } catch {
+      // Ignored
+    }
 
-  return {
-    hash: hash || '0x7f8ba1689234b678de9a4b2c1234a4c58d0426f8',
-    status: 'Success',
-    timestamp: '2026-04-24 10:25:34 UTC',
-    from: '0x4D2B8A043C0E56A9D...2B',
-    to: '0x99F1B8A043C0E56A9...1F',
-    payload: {
-      txId: 'TX-8823',
-      aiScore: 89,
-      flags: ['Volume Anomaly'],
-      model_version: 'v2.4.1',
-      signature: '0xfa89...11',
-    },
-  };
+    return {
+      hash: tx.hash,
+      status: tx.status === 'success' ? 'Success' : 'Failed',
+      timestamp: new Date(tx.timestamp).toLocaleString('en-US', { timeZoneName: 'short' }),
+      from: tx.from,
+      to: tx.to,
+      blockHeight: tx.block_height,
+      payload: {
+        ...payload,
+        aiScore: tx.risk_score,
+        flags: tx.is_fraud ? [tx.flag_reason || tx.verdict] : [],
+      },
+    };
+  } catch (error) {
+    console.error('Error verifying transaction:', error);
+    throw new Error('Transaction not found', { cause: error });
+  }
 }
