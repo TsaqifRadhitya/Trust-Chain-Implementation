@@ -148,7 +148,12 @@ class PredictionOutput(BaseModel):
 
 # ── Endpoint ───────────────────────────────────────────────────
 @app.post("/predict", response_model=PredictionOutput)
-async def predict_fraud(tx: TransactionInput):
+async def predict_fraud(
+    tx: TransactionInput,
+    volume_sensitivity: int = 50,
+    geo_threshold: int = 50,
+    velocity_limit: int = 50
+):
     if iso_forest is None or scaler is None or lstm_model is None:
         raise HTTPException(status_code=500, detail="Model belum siap.")
 
@@ -187,6 +192,22 @@ async def predict_fraud(tx: TransactionInput):
         lstm_p   = predict_lstm(X_lstm)
 
         ensemble_s    = WEIGHT_IF * iso_norm_val + WEIGHT_LSTM * lstm_p
+
+        # Dynamic adjustments based on user configurations
+        volume_penalty = 0.0
+        if tx.amount_vs_vendor_avg > max(1.0, (100 - volume_sensitivity) / 10.0):
+            volume_penalty = (volume_sensitivity / 100.0) * 0.20
+            
+        geo_penalty = 0.0
+        if tx.geographic_deviation > max(0.1, (100 - geo_threshold) / 100.0):
+            geo_penalty = (geo_threshold / 100.0) * 0.20
+            
+        velocity_penalty = 0.0
+        if tx.tx_velocity_1h > max(1.0, (100 - velocity_limit) / 5.0):
+            velocity_penalty = (velocity_limit / 100.0) * 0.20
+            
+        ensemble_s = min(1.0, ensemble_s + volume_penalty + geo_penalty + velocity_penalty)
+
         risk_score    = int(ensemble_s * 100)
         is_fraud_pred = bool(ensemble_s >= 0.5)
 

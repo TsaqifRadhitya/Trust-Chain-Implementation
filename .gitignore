@@ -1,2 +1,3 @@
 frontend/.env
 backend/auth_service/.env
+backend/explorer_service/.env
