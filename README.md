@@ -18,7 +18,8 @@ Aplikasi web *Single Page Application* (SPA) interaktif.
 Layanan API internal yang memproses logika bisnis dan database. Dibangun menggunakan **Go (Golang)** dengan *framework* **Gin**.
 - **Auth Service**: Menangani proses otentikasi (JWT), manajemen akun, penyimpanan konfigurasi ERP pengguna, dan verifikasi internal token untuk API Gateway.
 - **Model Service**: Layanan API Machine Learning berbasis Python dan FastAPI untuk mendeteksi anomali/fraud pada transaksi menggunakan model Ensemble (Isolation Forest + LSTM).
-- **Explorer Service** (Spesifikasi): Mengelola sinkronisasi data (*Background Worker*) yang mengambil data dari ERP klien, mencatatnya ke dalam blockchain, dan menyediakan data tersebut untuk *Frontend Explorer*.
+- **Explorer Service**: Mengelola sinkronisasi data (*Background Worker*) yang mengambil data dari ERP klien secara periodik, mendeteksi *fraud* via *Model Service*, mencatatnya ke dalam blockchain, dan menyediakan API untuk halaman *Blockchain Explorer* serta *Cases*.
+- **Dummy API**: Simulator sistem ERP eksternal (*mock*) berbasis Go untuk keperluan pengujian sinkronisasi data yang mengembalikan objek transaksi.
 - **Database**: Menggunakan PostgreSQL 15.
 
 ---
@@ -32,7 +33,7 @@ Pastikan Anda telah menginstal [Docker](https://www.docker.com/) dan [Docker Com
    ```bash
    docker-compose up --build -d
    ```
-   *Perintah ini akan menjalankan container untuk Nginx (port 8080 & 8000), Auth Backend, Model Service, Frontend, dan PostgreSQL secara bersamaan.*
+   *Perintah ini akan menjalankan container untuk Nginx (port 8080 & 8000), Auth Backend, Model Service, Explorer Service, Dummy API, Frontend, dan PostgreSQL secara bersamaan.*
 
 2. **Menjalankan Frontend (Lokal)**
    Buka terminal baru, masuk ke folder `frontend`, instal dependensi, lalu jalankan *development server*:
