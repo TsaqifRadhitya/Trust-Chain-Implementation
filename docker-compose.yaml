@@ -12,6 +12,7 @@ services:
       - model_service
 
   frontend:
+    image: ghcr.io/tsaqifradhitya/trustchain-frontend:latest
     build:
       context: ./frontend
       args:
@@ -19,6 +20,7 @@ services:
     ports:
       - "5173:5173"
   backend:
+    image: ghcr.io/tsaqifradhitya/trustchain-auth-service:latest
     build:
       context: ./backend/auth_service
     environment:
@@ -35,6 +37,7 @@ services:
       - db
 
   model_service:
+    image: ghcr.io/tsaqifradhitya/trustchain-model-service:latest
     build:
       context: ./backend/model_service
     environment:
@@ -59,10 +62,12 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   dummy_api:
+    image: ghcr.io/tsaqifradhitya/trustchain-dummy-api:latest
     build:
       context: ./backend/dummy_api
 
   explorer_service:
+    image: ghcr.io/tsaqifradhitya/trustchain-explorer-service:latest
     build:
       context: ./backend/explorer_service
     environment:
