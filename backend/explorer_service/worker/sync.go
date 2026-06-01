@@ -39,7 +39,7 @@ func NewSyncWorker(b repository.BlockRepository, t repository.TransactionReposit
 
 func (w *SyncWorker) Start() {
 	log.Println("Starting Background Sync Worker...")
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(30 * time.Minute)
 
 	go func() {
 		for {
