@@ -84,6 +84,14 @@ services:
     build:
       context: ./backend/dummy_api
 
+  ganache:
+    image: trufflesuite/ganache:v7.9.0
+    ports:
+      - "8545:8545"
+    command: --deterministic --db /app/ganache_db --host 0.0.0.0 --miner.blockTime 1
+    volumes:
+      - ganache_data:/app/ganache_db
+
   explorer_service:
     image: ghcr.io/tsaqifradhitya/trustchain-explorer-service:latest
     build:
@@ -99,6 +107,7 @@ services:
       - ERP_API_URL=http://dummy_api:8080/predict
       - MODEL_API_URL=http://model_service:8000/predict
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - GANACHE_URL=http://ganache:8545
     depends_on:
       db:
         condition: service_started
@@ -108,6 +117,9 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
+      ganache:
+        condition: service_started
 
 volumes:
   pgdata:
+  ganache_data:

@@ -3,12 +3,12 @@ package domain
 import "time"
 
 type Block struct {
-	Height           int           `json:"height" gorm:"primaryKey;autoIncrement:false"`
-	Hash             string        `json:"hash" gorm:"unique;not null"`
-	ParentHash       string        `json:"parent_hash" gorm:"not null"`
-	Timestamp        time.Time     `json:"timestamp" gorm:"not null"`
+	Height           int           `json:"height"`
+	Hash             string        `json:"hash"`
+	ParentHash       string        `json:"parent_hash"`
+	Timestamp        time.Time     `json:"timestamp"`
 	Size             int           `json:"size"`
 	Miner            string        `json:"miner"`
 	TransactionCount int           `json:"tx_count"`
-	Transactions     []Transaction `json:"transactions" gorm:"foreignKey:BlockHeight;references:Height"`
+	Transactions     []Transaction `json:"transactions"`
 }

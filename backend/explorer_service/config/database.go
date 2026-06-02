@@ -38,10 +38,10 @@ func ConnectDatabase() {
 		log.Fatalf("Gagal connect ke database: %v", err)
 	}
 
-	// Auto Migrate
-	err = db.AutoMigrate(&domain.Block{}, &domain.Transaction{})
+	// Auto Migrate - Only for ERP Configuration settings
+	err = db.AutoMigrate(&domain.Configuration{})
 	if err != nil {
-		log.Fatalf("Gagal migrasi database: %v", err)
+		log.Fatalf("Gagal migrasi database settings: %v", err)
 	}
 
 	DB = db

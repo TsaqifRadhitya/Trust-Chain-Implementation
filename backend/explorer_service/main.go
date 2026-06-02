@@ -20,17 +20,28 @@ func main() {
 		log.Println("Warning: file .env tidak ditemukan")
 	}
 
-	// 1. Inisialisasi Database
+	// 1. Inisialisasi Database (PostgreSQL untuk Settings)
 	config.ConnectDatabase()
 	db := config.DB
 
-	// 2. Inisialisasi Repositories
-	blockRepo := repository.NewBlockRepository(db)
-	txRepo := repository.NewTransactionRepository(db)
+	// 2. Inisialisasi Blockchain Repository (Ganache)
+	ganacheURL := os.Getenv("GANACHE_URL")
+	if ganacheURL == "" {
+		ganacheURL = "http://ganache:8545"
+	}
+	systemPrivateKey := os.Getenv("SYSTEM_PRIVATE_KEY")
+	if systemPrivateKey == "" {
+		systemPrivateKey = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
+	}
+	blockchainRepo, err := repository.NewBlockchainRepository(ganacheURL, systemPrivateKey)
+	if err != nil {
+		log.Fatalf("Gagal terhubung ke Ganache: %v", err)
+	}
+
 	settingRepo := repository.NewSettingRepository(db)
 
 	// 3. Inisialisasi Usecase
-	explorerUsecase := usecase.NewExplorerUsecase(blockRepo, txRepo)
+	explorerUsecase := usecase.NewExplorerUsecase(blockchainRepo)
 
 	// 4. Inisialisasi Message Broker
 	amqpURL := os.Getenv("RABBITMQ_URL")
@@ -44,7 +55,7 @@ func main() {
 	defer broker.Close()
 
 	// 5. Start Background Worker
-	syncWorker := worker.NewSyncWorker(blockRepo, txRepo, settingRepo, broker)
+	syncWorker := worker.NewSyncWorker(blockchainRepo, settingRepo, broker)
 	syncWorker.Start()
 
 	// 6. Inisialisasi HTTP Server

@@ -36,3 +36,21 @@ export interface VerifyTxResponse {
   blockHeight: number;
   payload: Record<string, unknown>;
 }
+
+export interface ValidationDetail {
+  height: number;
+  hash: string;
+  parent_hash: string;
+  previous_block_hash: string;
+  timestamp: string;
+  tx_count: number;
+  status: 'OK' | 'CORRUPTED';
+  error?: string;
+}
+
+export interface ChainValidationResponse {
+  is_valid: boolean;
+  total_blocks: number;
+  validated_blocks: number;
+  details: ValidationDetail[];
+}

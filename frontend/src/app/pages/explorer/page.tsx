@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Link as LinkIcon, CheckCircle, Clock } from 'lucide-react';
+import { Search, Link as LinkIcon, CheckCircle, Clock, ShieldCheck, ShieldAlert, AlertTriangle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useParams } from 'react-router-dom';
 import { useExplorer } from './hooks/useExplorer';
@@ -9,7 +9,16 @@ export default function BlockchainExplorer() {
   const [hash, setHash] = useState('');
   const [searched, setSearched] = useState(false);
   const { companyId } = useParams();
-  const { data, isLoading, error, verify } = useExplorer();
+  const { 
+    data, 
+    isLoading, 
+    error, 
+    verify,
+    validationData,
+    isValidating,
+    validationError,
+    validate 
+  } = useExplorer();
 
   const isPublic = !!companyId;
 
@@ -21,14 +30,20 @@ export default function BlockchainExplorer() {
       await verify(hash);
       setSearched(true);
     } catch {
-      // Error handled by hook or console
       setSearched(true);
+    }
+  };
+
+  const handleIntegrityCheck = async () => {
+    try {
+      await validate();
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const getSanitizedPayload = (payload: Record<string, unknown>) => {
     if (isPublic) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { signature, ...sanitized } = payload;
       return sanitized;
     }
@@ -36,13 +51,117 @@ export default function BlockchainExplorer() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto pb-10">
       <div className="text-center py-10">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
           <LinkIcon className="w-8 h-8" />
         </div>
         <h1 className="text-3xl font-bold text-white tracking-tight">Immutable Audit Trail</h1>
         <p className="text-textMuted mt-2 max-w-lg mx-auto">Verify any transaction on the TrustChain network. Our distributed ledger guarantees tamper-proof records for your auditors.</p>
+      </div>
+
+      {/* Cryptographic Integrity Audit Panel */}
+      <div className="bg-surface border border-slate-700/50 rounded-2xl p-6 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-4 opacity-5">
+          <ShieldCheck className="w-24 h-24 text-white" />
+        </div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              Cryptographic Integrity Audit
+            </h2>
+            <p className="text-xs text-textMuted mt-1">
+              Verify the mathematical integrity of the Ganache blockchain. This scans all blocks to check parent hash continuity.
+            </p>
+          </div>
+          <button
+            onClick={handleIntegrityCheck}
+            disabled={isValidating}
+            className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-800/50 text-white border border-slate-700 hover:border-slate-600 px-5 py-2.5 rounded-xl font-medium text-sm transition-all duration-200"
+          >
+            {isValidating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                Auditing Nodes...
+              </>
+            ) : (
+              'Run Integrity Check'
+            )}
+          </button>
+        </div>
+
+        {/* Audit Results */}
+        {validationData && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 border-t border-slate-700/50 pt-5 space-y-4"
+          >
+            {validationData.is_valid ? (
+              <div className="flex items-start gap-3 bg-success/10 border border-success/30 p-4 rounded-xl text-success">
+                <ShieldCheck className="w-6 h-6 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-sm">Blockchain Intact & Secure</h3>
+                  <p className="text-xs text-success/80 mt-0.5">
+                    All {validationData.total_blocks} blocks successfully validated. Cryptographic hash-chain links are 100% correct. No tampering detected.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-red-500">
+                <ShieldAlert className="w-6 h-6 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-sm">Blockchain Integrity Compromised!</h3>
+                  <p className="text-xs text-red-500/80 mt-0.5">
+                    Detected corrupted or broken block links! The mathematical proof of immutability failed validation.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Block list detail */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-white uppercase tracking-wider">Audit Details</h4>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 pr-2 custom-scrollbar">
+                {validationData.details.map((b) => (
+                  <div 
+                    key={b.height} 
+                    className="flex justify-between items-center text-xs p-2 bg-slate-900/50 border border-slate-800 rounded-lg hover:border-slate-700/80 transition"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-textMuted bg-slate-800 px-1.5 py-0.5 rounded">
+                        Block #{b.height}
+                      </span>
+                      <span className="font-mono text-[10px] text-textMuted max-w-[200px] md:max-w-sm truncate">
+                        Hash: {b.hash}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {b.tx_count > 0 && (
+                        <span className="text-[10px] text-accent/80 font-medium">
+                          {b.tx_count} txs
+                        </span>
+                      )}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        b.status === 'OK' ? 'bg-success/15 text-success' : 'bg-red-500/15 text-red-500'
+                      }`}>
+                        {b.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {validationError && (
+          <div className="mt-4 p-4 bg-red-500/10 border border-red-500/30 text-red-500 rounded-xl text-xs flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <span>Failed to run integrity audit: {validationError.message || 'Node connection error'}</span>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSearch} className="relative group">

@@ -1,4 +1,4 @@
-import type { Case, CaseStatus, Transaction, TrendData, VerifyTxResponse } from './type';
+import type { Case, CaseStatus, Transaction, TrendData, VerifyTxResponse, ChainValidationResponse } from './type';
 
 const INITIAL_CASES: Case[] = [
   { id: 'CASE-092', txId: 'TX-8823', date: '2026-04-24', status: 'Open', partner: 'Neo Supply', amount: '$2,100,000.00', risk: 89, type: 'Volume Anomaly', originalHash: '0x1234567890abcdef' },
@@ -175,5 +175,15 @@ export async function verifyTx(hash: string): Promise<VerifyTxResponse> {
   } catch (error) {
     console.error('Error verifying transaction:', error);
     throw new Error('Transaction not found', { cause: error });
+  }
+}
+
+export async function validateChain(): Promise<ChainValidationResponse> {
+  try {
+    const response = await apiClient.get('/explorer/blockchain/validate');
+    return response.data.data;
+  } catch (error) {
+    console.error('Error validating blockchain chain:', error);
+    throw error;
   }
 }

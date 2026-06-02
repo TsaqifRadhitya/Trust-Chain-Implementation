@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	syncQueueName   = "sync_jobs"
-	predictReqQueue = "predict_requests"
+	syncQueueName    = "sync_jobs"
+	predictReqQueue  = "predict_requests"
+	predictRespQueue = "predict_responses"
 )
 
 // SyncJob adalah payload pesan untuk pekerjaan sinkronisasi ERP.
@@ -86,7 +87,14 @@ func NewBroker(amqpURL string) (*Broker, error) {
 		return nil, fmt.Errorf("gagal deklarasi %s: %w", predictReqQueue, err)
 	}
 
-	log.Printf("[Broker] Terhubung ke RabbitMQ. Queue '%s' dan '%s' siap.\n", syncQueueName, predictReqQueue)
+	// Deklarasi queue predict_responses
+	if _, err = ch.QueueDeclare(predictRespQueue, true, false, false, false, nil); err != nil {
+		ch.Close()
+		conn.Close()
+		return nil, fmt.Errorf("gagal deklarasi %s: %w", predictRespQueue, err)
+	}
+
+	log.Printf("[Broker] Terhubung ke RabbitMQ. Queue '%s', '%s', dan '%s' siap.\n", syncQueueName, predictReqQueue, predictRespQueue)
 	return &Broker{conn: conn, channel: ch}, nil
 }
 
@@ -96,6 +104,7 @@ func (b *Broker) Publish(job SyncJob) error {
 	if err != nil {
 		return err
 	}
+	log.Printf("[Broker] Publishing SyncJob untuk UserID %d ke queue '%s'\n", job.UserID, syncQueueName)
 	return b.channel.Publish("", syncQueueName, false, false,
 		amqp.Publishing{
 			DeliveryMode: amqp.Persistent,
@@ -113,26 +122,53 @@ func (b *Broker) Consume() (<-chan amqp.Delivery, error) {
 	return b.channel.Consume(syncQueueName, "", false, false, false, false, nil)
 }
 
+// PublishPredictRequest mengirim payload transaksi ke model_service secara asynchronous.
+func (b *Broker) PublishPredictRequest(txHash string, txData []byte, params ModelParams) error {
+	var payloadMap map[string]interface{}
+	if err := json.Unmarshal(txData, &payloadMap); err != nil {
+		return err
+	}
+	payloadMap["tx_hash"] = txHash
+	payloadMap["_params"] = params
+
+	enrichedBody, err := json.Marshal(payloadMap)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[Broker] Publishing prediction request untuk TxHash: %s ke queue '%s'\n", txHash, predictReqQueue)
+	return b.channel.Publish("", predictReqQueue, false, false,
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "application/json",
+			Body:         enrichedBody,
+		},
+	)
+}
+
+// ConsumePredictResponses memulai konsumsi pesan dari predict_responses queue.
+func (b *Broker) ConsumePredictResponses() (<-chan amqp.Delivery, error) {
+	if err := b.channel.Qos(1, 0, false); err != nil {
+		return nil, err
+	}
+	return b.channel.Consume(predictRespQueue, "", false, false, false, false, nil)
+}
+
 // CallModelService mengirim payload ke model_service via AMQP RPC (request/reply pattern).
-// Payload dikirim ke predict_requests, hasilnya ditunggu di reply queue eksklusif sementara.
-// Timeout 30 detik.
+// Catatan: Ini dipertahankan untuk kompatibilitas, sync worker sekarang menggunakan PublishPredictRequest.
 func (b *Broker) CallModelService(payload []byte, params ModelParams) (*ModelResponse, error) {
-	// Buat reply queue eksklusif & auto-delete untuk request ini saja
 	replyQueue, err := b.channel.QueueDeclare("", false, true, true, false, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gagal membuat reply queue: %w", err)
 	}
 
-	// Subscribe ke reply queue SEBELUM publish request (hindari race condition)
 	replies, err := b.channel.Consume(replyQueue.Name, "", true, true, false, false, nil)
 	if err != nil {
 		return nil, fmt.Errorf("gagal subscribe reply queue: %w", err)
 	}
 
-	// Correlation ID unik per request
 	corrID := fmt.Sprintf("corr-%d", time.Now().UnixNano())
 
-	// Sisipkan _params ke dalam payload JSON
 	var payloadMap map[string]interface{}
 	if err := json.Unmarshal(payload, &payloadMap); err != nil {
 		return nil, fmt.Errorf("gagal parse payload: %w", err)
@@ -143,7 +179,6 @@ func (b *Broker) CallModelService(payload []byte, params ModelParams) (*ModelRes
 		return nil, fmt.Errorf("gagal marshal enriched payload: %w", err)
 	}
 
-	// Kirim request ke predict_requests
 	if err := b.channel.Publish("", predictReqQueue, false, false,
 		amqp.Publishing{
 			ContentType:   "application/json",
@@ -155,7 +190,6 @@ func (b *Broker) CallModelService(payload []byte, params ModelParams) (*ModelRes
 		return nil, fmt.Errorf("gagal publish ke predict_requests: %w", err)
 	}
 
-	// Tunggu balasan dengan timeout 30 detik
 	timeout := time.After(30 * time.Second)
 	for {
 		select {

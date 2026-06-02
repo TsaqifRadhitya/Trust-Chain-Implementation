@@ -3,11 +3,11 @@ package domain
 import "time"
 
 type Transaction struct {
-	Hash        string    `json:"hash" gorm:"primaryKey"`
-	BlockHeight int       `json:"block_height" gorm:"index"`
+	Hash        string    `json:"hash"`
+	BlockHeight int       `json:"block_height"`
 	Status      string    `json:"status"` // e.g., "success"
-	FromAddress string    `json:"from" gorm:"index"`
-	ToAddress   string    `json:"to" gorm:"index"`
+	FromAddress string    `json:"from"`
+	ToAddress   string    `json:"to"`
 	Value       float64   `json:"value"`
 	Fee         float64   `json:"fee"`
 	GasUsed     int       `json:"gas_used"`

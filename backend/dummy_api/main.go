@@ -56,7 +56,7 @@ func predictHandler(w http.ResponseWriter, r *http.Request) {
 
 	vendors := []string{"Neo Supply International", "Global Tech Corp", "PT Sinar Logistik", "Sunrise Raw Materials", "Acme Corp"}
 	categories := []string{"Trading", "Logistics", "Manufacturing", "Energy", "Chemicals", "Construction", "Electronics", "Raw Materials", "Engineering"}
-	
+
 	var output TransactionInput
 	output.VendorName = vendors[rand.Intn(len(vendors))]
 	output.VendorCategory = categories[rand.Intn(len(categories))]
@@ -71,17 +71,17 @@ func predictHandler(w http.ResponseWriter, r *http.Request) {
 		output.AmountIDR = randomFloat(1_000_000_000, 10_000_000_000) // 1 Milyar - 10 Milyar
 		output.HourOfDay = randomInt(0, 4)                            // Dini hari (jam 0-4)
 		output.DayOfWeek = randomInt(0, 6)
-		output.IsWeekend = 1                                          // Biasanya dieksekusi saat libur/weekend
-		output.VendorAgeDays = randomInt(1, 60)                       // Vendor baru (1-60 hari)
-		output.VendorTxCount30d = randomInt(10, 50)                   // Sangat sering transaksi akhir-akhir ini
-		output.AmountVsVendorAvg = randomFloat(3.0, 10.0)             // 3x sampai 10x dari rata-rata vendor
-		output.GeographicDeviation = randomFloat(0.6, 1.0)            // Lokasi aneh/jauh
-		output.TxVelocity1h = randomInt(5, 20)                        // Velocity tinggi (Smurfing)
+		output.IsWeekend = 1                               // Biasanya dieksekusi saat libur/weekend
+		output.VendorAgeDays = randomInt(1, 60)            // Vendor baru (1-60 hari)
+		output.VendorTxCount30d = randomInt(10, 50)        // Sangat sering transaksi akhir-akhir ini
+		output.AmountVsVendorAvg = randomFloat(3.0, 10.0)  // 3x sampai 10x dari rata-rata vendor
+		output.GeographicDeviation = randomFloat(0.6, 1.0) // Lokasi aneh/jauh
+		output.TxVelocity1h = randomInt(5, 20)             // Velocity tinggi (Smurfing)
 		output.TxVelocity24h = randomInt(15, 50)
-		output.IsRoundNumber = 1                                      // Angka bulat (misal pas 5 Milyar)
-		output.DaysSinceLastTxVendor = randomInt(0, 1)                // Tidak ada jeda istirahat
-		output.IpCountryMatch = 0                                     // IP luar negeri / VPN
-		output.DuplicateScore = randomFloat(0.4, 0.9)                 // Mirip dengan transaksi lain
+		output.IsRoundNumber = 1                       // Angka bulat (misal pas 5 Milyar)
+		output.DaysSinceLastTxVendor = randomInt(0, 1) // Tidak ada jeda istirahat
+		output.IpCountryMatch = 0                      // IP luar negeri / VPN
+		output.DuplicateScore = randomFloat(0.4, 0.9)  // Mirip dengan transaksi lain
 
 		// Konteks Organisasi berisiko tinggi
 		output.Department = "Finance"
@@ -96,20 +96,20 @@ func predictHandler(w http.ResponseWriter, r *http.Request) {
 		// ==========================================
 		// POLA NORMAL (90% Kasus)
 		// ==========================================
-		output.AmountIDR = randomFloat(5_000_000, 100_000_000)        // 5 Juta - 100 Juta
-		output.HourOfDay = randomInt(8, 17)                           // Jam kerja kantor (8 pagi - 5 sore)
-		output.DayOfWeek = randomInt(1, 5)                            // Senin - Jumat
+		output.AmountIDR = randomFloat(5_000_000, 100_000_000) // 5 Juta - 100 Juta
+		output.HourOfDay = randomInt(8, 17)                    // Jam kerja kantor (8 pagi - 5 sore)
+		output.DayOfWeek = randomInt(1, 5)                     // Senin - Jumat
 		output.IsWeekend = 0
-		output.VendorAgeDays = randomInt(365, 2000)                   // Vendor lama terpercaya (> 1 tahun)
-		output.VendorTxCount30d = randomInt(1, 10)                    // Wajar (1-10 transaksi sebulan)
-		output.AmountVsVendorAvg = randomFloat(0.8, 1.2)              // Sangat dekat dengan rata-rata (0.8x - 1.2x)
-		output.GeographicDeviation = randomFloat(0.0, 0.1)            // Lokasi wajar
-		output.TxVelocity1h = randomInt(0, 1)                         // Lambat/Wajar
+		output.VendorAgeDays = randomInt(365, 2000)        // Vendor lama terpercaya (> 1 tahun)
+		output.VendorTxCount30d = randomInt(1, 10)         // Wajar (1-10 transaksi sebulan)
+		output.AmountVsVendorAvg = randomFloat(0.8, 1.2)   // Sangat dekat dengan rata-rata (0.8x - 1.2x)
+		output.GeographicDeviation = randomFloat(0.0, 0.1) // Lokasi wajar
+		output.TxVelocity1h = randomInt(0, 1)              // Lambat/Wajar
 		output.TxVelocity24h = randomInt(1, 3)
-		output.IsRoundNumber = 0                                      // Angka acak/keriting (karena pajak dll)
-		output.DaysSinceLastTxVendor = randomInt(5, 30)               // Jeda waktu panjang
-		output.IpCountryMatch = 1                                     // IP Indonesia / Cocok
-		output.DuplicateScore = randomFloat(0.0, 0.05)                // Skor duplikasi sangat rendah
+		output.IsRoundNumber = 0                        // Angka acak/keriting (karena pajak dll)
+		output.DaysSinceLastTxVendor = randomInt(5, 30) // Jeda waktu panjang
+		output.IpCountryMatch = 1                       // IP Indonesia / Cocok
+		output.DuplicateScore = randomFloat(0.0, 0.05)  // Skor duplikasi sangat rendah
 
 		// Konteks Organisasi berisiko rendah/standar
 		normalDepts := []string{"Procurement", "Operations", "HR", "Logistics"}
