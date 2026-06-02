@@ -33,7 +33,7 @@ func main() {
 	if systemPrivateKey == "" {
 		systemPrivateKey = "4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d"
 	}
-	blockchainRepo, err := repository.NewBlockchainRepository(ganacheURL, systemPrivateKey, db)
+	blockchainRepo, err := repository.NewBlockchainRepository(ganacheURL, systemPrivateKey)
 	if err != nil {
 		log.Fatalf("Gagal terhubung ke Ganache: %v", err)
 	}

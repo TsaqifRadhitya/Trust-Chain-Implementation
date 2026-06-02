@@ -19,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"gorm.io/gorm"
 )
 
 type BlockchainRepository interface {
@@ -40,10 +39,9 @@ type blockchainRepository struct {
 	privateKey      *ecdsa.PrivateKey
 	senderAddress   common.Address
 	contractAddress common.Address
-	db              *gorm.DB
 }
 
-func NewBlockchainRepository(ganacheURL string, privateKeyHex string, db *gorm.DB) (BlockchainRepository, error) {
+func NewBlockchainRepository(ganacheURL string, privateKeyHex string) (BlockchainRepository, error) {
 	log.Printf("[Blockchain Repository] Connecting to Ganache at %s...\n", ganacheURL)
 	client, err := ethclient.Dial(ganacheURL)
 	if err != nil {
@@ -68,7 +66,6 @@ func NewBlockchainRepository(ganacheURL string, privateKeyHex string, db *gorm.D
 		client:        client,
 		privateKey:    privKey,
 		senderAddress: senderAddr,
-		db:            db,
 	}
 
 	// Deploy smart contract at startup
@@ -374,14 +371,6 @@ func (r *blockchainRepository) GetTransactionByHash(hash string) (*domain.Transa
 		}
 	}
 
-	// Fallback to PostgreSQL database if correction is not found or not marked corrected on-chain
-	if !correction.IsCorrected && r.db != nil {
-		var dbCorr domain.Correction
-		if dbErr := r.db.Where("tx_hash = ?", hash).First(&dbCorr).Error; dbErr == nil {
-			correction = dbCorr
-		}
-	}
-
 	dTx := domain.Transaction{
 		Hash:        baseRes[0].(string),
 		FromAddress: baseRes[1].(string),
@@ -426,7 +415,7 @@ func (r *blockchainRepository) GetTransactionByHash(hash string) (*domain.Transa
 func (r *blockchainRepository) AddCorrection(txHash string, actualStatus string, reason string, correctedBy string) (*domain.Correction, error) {
 	log.Printf("[Blockchain Repository] Recording correction on blockchain for TxHash: %s (Status: %s)\n", txHash, actualStatus)
 
-	// 1. Record correction on smart contract
+	// Record correction on smart contract
 	evmHash, err := r.callContractWrite(
 		"addCorrection",
 		txHash,
@@ -436,40 +425,18 @@ func (r *blockchainRepository) AddCorrection(txHash string, actualStatus string,
 		correctedBy,
 	)
 	if err != nil {
-		log.Printf("[Blockchain Repository] Warning: failed to record correction on-chain: %v. Proceeding to save locally.\n", err)
-	} else {
-		log.Printf("[Blockchain Repository] ✓ Correction recorded on-chain. EVM TxHash: %s\n", evmHash)
+		return nil, fmt.Errorf("failed to record correction on-chain: %w", err)
 	}
+	log.Printf("[Blockchain Repository] ✓ Correction recorded on-chain. EVM TxHash: %s\n", evmHash)
 
-	// 2. Save/Upsert correction in database
-	var correction domain.Correction
-	err = r.db.Where("tx_hash = ?", txHash).First(&correction).Error
-	if err != nil {
-		// Create new
-		correction = domain.Correction{
-			TxHash:       txHash,
-			IsCorrected:  true,
-			ActualStatus: actualStatus,
-			Reason:       reason,
-			CorrectedBy:  correctedBy,
-			UpdatedAt:    time.Now(),
-		}
-		if err := r.db.Create(&correction).Error; err != nil {
-			return nil, fmt.Errorf("failed to save correction in database: %w", err)
-		}
-	} else {
-		// Update
-		correction.IsCorrected = true
-		correction.ActualStatus = actualStatus
-		correction.Reason = reason
-		correction.CorrectedBy = correctedBy
-		correction.UpdatedAt = time.Now()
-		if err := r.db.Save(&correction).Error; err != nil {
-			return nil, fmt.Errorf("failed to update correction in database: %w", err)
-		}
-	}
-
-	return &correction, nil
+	return &domain.Correction{
+		TxHash:       txHash,
+		IsCorrected:  true,
+		ActualStatus: actualStatus,
+		Reason:       reason,
+		CorrectedBy:  correctedBy,
+		UpdatedAt:    time.Now(),
+	}, nil
 }
 
 

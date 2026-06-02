@@ -1,4 +1,4 @@
-import type { Case, CaseStatus, Transaction, TrendData, VerifyTxResponse, ChainValidationResponse } from './type';
+import type { Case, CaseStatus, Transaction, TrendData, VerifyTxResponse, ChainValidationResponse, BackendTransaction } from './type';
 import { apiClient } from '../../lib/axios';
 
 export const FLAG_REASONS: Record<string, string> = {
@@ -20,47 +20,18 @@ function getStoredCaseStatuses(): Record<string, CaseStatus> {
   return {};
 }
 
-interface BackendTransaction {
-  hash: string;
-  block_height: number;
-  timestamp: string;
-  status: string;
-  from: string;
-  to: string;
-  value: number;
-  data: string;
-  is_fraud: boolean;
-  risk_score: number;
-  flag_reason: string;
-  verdict: string;
-  model_result?: {
-    is_fraud: boolean;
-    verdict: string;
-    flag_reason: string;
-    risk_score: number;
-    data: string;
-  };
-  correction?: {
-    is_corrected: boolean;
-    actual_status: string;
-    reason: string;
-    corrected_by: string;
-    updated_at: string;
-  };
-}
-
 export async function fetchCases(): Promise<Case[]> {
   try {
     const response = await apiClient.get('/explorer/transactions?limit=100');
     const txs: BackendTransaction[] = response.data.data || [];
-    
+
     // Filter transactions that are originally fraud from the ML model
     const fraudTxs = txs.filter((tx) => tx.model_result && tx.model_result.is_fraud === true);
-    
+
     return fraudTxs.map((tx) => {
       // Extract short ID
       const shortId = `CASE-${tx.hash.substring(2, 6).toUpperCase()}`;
-      
+
       // Try to parse original ERP payload for context
       let partner = tx.to || 'Unknown Vendor';
       const dataStr = tx.model_result ? tx.model_result.data : tx.data;
@@ -105,7 +76,7 @@ export async function updateCaseStatus(caseId: string, status: CaseStatus, txHas
   const statuses = getStoredCaseStatuses();
   statuses[caseId] = status;
   localStorage.setItem('tc_case_statuses', JSON.stringify(statuses));
-  
+
   if (status === 'Resolved' && txHash) {
     try {
       await apiClient.post(`/explorer/transactions/${txHash}/correct`, {
@@ -117,7 +88,7 @@ export async function updateCaseStatus(caseId: string, status: CaseStatus, txHas
       console.error('Failed to post correction to backend:', err);
     }
   }
-  
+
   return { id: caseId, status } as Case;
 }
 
@@ -125,7 +96,7 @@ export async function fetchTrendData(): Promise<TrendData[]> {
   try {
     const response = await apiClient.get('/explorer/transactions?limit=50');
     const txs: BackendTransaction[] = response.data.data || [];
-    
+
     // Sort transactions chronologically (oldest first for charts)
     const sortedTxs = [...txs].reverse();
 
@@ -150,7 +121,7 @@ export async function fetchLiveTransactions(): Promise<Transaction[]> {
   try {
     const response = await apiClient.get('/explorer/transactions?limit=20');
     const txs: BackendTransaction[] = response.data.data || [];
-    
+
     return txs.map((tx) => {
       let partner = tx.to || 'Unknown Vendor';
       try {
@@ -192,7 +163,7 @@ export async function verifyTx(hash: string): Promise<VerifyTxResponse> {
   try {
     const response = await apiClient.get(`/explorer/transactions/${hash}`);
     const tx = response.data.data;
-    
+
     let payload = {};
     try {
       payload = JSON.parse(tx.data) as Record<string, unknown>;
