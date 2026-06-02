@@ -1,14 +1,12 @@
 package worker
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -23,7 +21,6 @@ type SyncWorker struct {
 	txRepo      repository.TransactionRepository
 	settingRepo repository.SettingRepository
 	broker      *Broker
-	modelURL    string
 }
 
 func NewSyncWorker(
@@ -32,17 +29,11 @@ func NewSyncWorker(
 	s repository.SettingRepository,
 	broker *Broker,
 ) *SyncWorker {
-	modelURL := os.Getenv("MODEL_API_URL")
-	if modelURL == "" {
-		modelURL = "http://model_service:8000/predict"
-	}
-
 	return &SyncWorker{
 		blockRepo:   b,
 		txRepo:      t,
 		settingRepo: s,
 		broker:      broker,
-		modelURL:    modelURL,
 	}
 }
 
@@ -178,29 +169,20 @@ func (w *SyncWorker) processSingleConfig(conf *domain.Configuration, erpURL, api
 		return fmt.Errorf("payload ERP %s tidak valid (amount_idr kosong/invalid)", erpURL)
 	}
 
-	// 2. Kirim ke Model Service
-	modelURLWithParams := fmt.Sprintf(
-		"%s?volume_sensitivity=%d&geo_threshold=%d&velocity_limit=%d",
-		w.modelURL, conf.VolumeSensitivity, conf.GeoThreshold, conf.VelocityLimit,
-	)
-
-	modelResp, err := http.Post(modelURLWithParams, "application/json", bytes.NewBuffer(bodyBytes))
+	// 2. Kirim ke Model Service via AMQP RPC
+	modelResult, err := w.broker.CallModelService(bodyBytes, ModelParams{
+		VolumeSensitivity: conf.VolumeSensitivity,
+		GeoThreshold:      conf.GeoThreshold,
+		VelocityLimit:     conf.VelocityLimit,
+	})
 	if err != nil {
-		return fmt.Errorf("error memanggil Model Service: %w", err)
+		return fmt.Errorf("error memanggil Model Service via AMQP: %w", err)
 	}
 
-	var modelOutput map[string]interface{}
-	err = json.NewDecoder(modelResp.Body).Decode(&modelOutput)
-	modelResp.Body.Close()
-	if err != nil {
-		return fmt.Errorf("error parsing response Model Service: %w", err)
-	}
-
-	isFraud, _ := modelOutput["is_fraud"].(bool)
-	verdict, _ := modelOutput["verdict"].(string)
-	flagReason, _ := modelOutput["flag_reason"].(string)
-	riskScoreFloat, _ := modelOutput["risk_score"].(float64)
-	riskScore := int(riskScoreFloat)
+	isFraud   := modelResult.IsFraud
+	verdict   := modelResult.Verdict
+	flagReason := modelResult.FlagReason
+	riskScore := modelResult.RiskScore
 
 	// Generate address hash dari nama vendor
 	vendorHash := fmt.Sprintf("0x%x", sha256.Sum256([]byte(vendorName)))
