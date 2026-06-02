@@ -200,14 +200,18 @@ jobs:
             git fetch --all
             git reset --hard origin/main
             
-            # Hentikan container lama yang mungkin masih menyangkut
-            docker-compose down
+            # Hentikan dan hapus container + network lama (termasuk orphan container)
+            docker-compose down --remove-orphans
+
+            # Hapus network yang mungkin tertinggal (mengatasi error "network already exists")
+            docker network prune -f
             
             # Pull pre-built images dari GHCR
             docker-compose pull
             
-            # Jalankan docker container di background tanpa proses build
-            docker-compose up -d
+            # Jalankan ulang container dengan force-recreate agar pakai image terbaru
+            docker-compose up -d --force-recreate
             
             # Hapus image yang tidak terpakai (dangling) agar hemat storage
             docker image prune -f
+
