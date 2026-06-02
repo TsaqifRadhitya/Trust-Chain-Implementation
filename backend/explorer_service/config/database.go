@@ -39,7 +39,7 @@ func ConnectDatabase() {
 	}
 
 	// Auto Migrate - Only for ERP Configuration settings
-	err = db.AutoMigrate(&domain.Configuration{})
+	err = db.AutoMigrate(&domain.Configuration{}, &domain.Correction{})
 	if err != nil {
 		log.Fatalf("Gagal migrasi database settings: %v", err)
 	}

@@ -12,8 +12,8 @@ export function useCases() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: CaseStatus }) =>
-      updateCaseStatus(id, status),
+    mutationFn: ({ id, status, txHash }: { id: string; status: CaseStatus; txHash?: string }) =>
+      updateCaseStatus(id, status, txHash),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CASES] });
     },

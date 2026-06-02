@@ -35,6 +35,7 @@ type ExplorerUsecase interface {
 	GetAddressDetail(address string) (map[string]interface{}, error)
 	Search(query string) (map[string]interface{}, error)
 	ValidateChain() (*ChainValidationResult, error)
+	AddCorrection(txHash string, actualStatus string, reason string, correctedBy string) (*domain.Correction, error)
 }
 
 type explorerUsecase struct {
@@ -173,3 +174,8 @@ func (u *explorerUsecase) ValidateChain() (*ChainValidationResult, error) {
 
 	return result, nil
 }
+
+func (u *explorerUsecase) AddCorrection(txHash string, actualStatus string, reason string, correctedBy string) (*domain.Correction, error) {
+	return u.blockchainRepo.AddCorrection(txHash, actualStatus, reason, correctedBy)
+}
+

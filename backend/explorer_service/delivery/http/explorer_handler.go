@@ -24,6 +24,7 @@ func NewExplorerHandler(r *gin.RouterGroup, u usecase.ExplorerUsecase) {
 		explorerRoutes.GET("/address/:address", handler.GetAddressDetail)
 		explorerRoutes.GET("/search", handler.Search)
 		explorerRoutes.GET("/blockchain/validate", handler.ValidateChain)
+		explorerRoutes.POST("/transactions/:hash/correct", handler.AddCorrection)
 	}
 }
 
@@ -105,3 +106,27 @@ func (h *ExplorerHandler) ValidateChain(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"status": 200, "message": "Blockchain validation completed", "data": result})
 }
+
+type CorrectionRequest struct {
+	ActualStatus string `json:"actual_status" binding:"required"`
+	Reason       string `json:"reason"`
+	CorrectedBy  string `json:"corrected_by"`
+}
+
+func (h *ExplorerHandler) AddCorrection(c *gin.Context) {
+	hash := c.Param("hash")
+	var req CorrectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": 400, "message": err.Error(), "data": nil})
+		return
+	}
+
+	correction, err := h.usecase.AddCorrection(hash, req.ActualStatus, req.Reason, req.CorrectedBy)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": 500, "message": err.Error(), "data": nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": 200, "message": "Correction registered successfully", "data": correction})
+}
+
