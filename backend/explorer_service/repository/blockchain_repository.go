@@ -94,9 +94,9 @@ func deployContract(client *ethclient.Client, privateKey *ecdsa.PrivateKey, send
 	bytecodeBytes := common.FromHex(contract.TrustChainBytecode)
 	tx := types.NewContractCreation(nonce, big.NewInt(0), gasLimit, gasPrice, bytecodeBytes)
 
-	chainID, err := client.NetworkID(context.Background())
+	chainID, err := client.ChainID(context.Background())
 	if err != nil {
-		return common.Address{}, fmt.Errorf("failed to get network ID: %w", err)
+		return common.Address{}, fmt.Errorf("failed to get chain ID: %w", err)
 	}
 
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
@@ -157,7 +157,7 @@ func (r *blockchainRepository) callContractWrite(methodName string, args ...inte
 		Data:     input,
 	})
 
-	chainID, err := r.client.NetworkID(context.Background())
+	chainID, err := r.client.ChainID(context.Background())
 	if err != nil {
 		return "", err
 	}
