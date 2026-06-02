@@ -44,7 +44,8 @@ export default function BlockchainExplorer() {
 
   const getSanitizedPayload = (payload: Record<string, unknown>) => {
     if (isPublic) {
-      const { signature, ...sanitized } = payload;
+      const sanitized = { ...payload };
+      delete sanitized.signature;
       return sanitized;
     }
     return payload;
