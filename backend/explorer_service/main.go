@@ -32,11 +32,22 @@ func main() {
 	// 3. Inisialisasi Usecase
 	explorerUsecase := usecase.NewExplorerUsecase(blockRepo, txRepo)
 
-	// 4. Start Background Worker
-	syncWorker := worker.NewSyncWorker(blockRepo, txRepo, settingRepo)
+	// 4. Inisialisasi Message Broker
+	amqpURL := os.Getenv("RABBITMQ_URL")
+	if amqpURL == "" {
+		amqpURL = "amqp://guest:guest@rabbitmq:5672/"
+	}
+	broker, err := worker.NewBroker(amqpURL)
+	if err != nil {
+		log.Fatalf("Gagal terhubung ke RabbitMQ: %v", err)
+	}
+	defer broker.Close()
+
+	// 5. Start Background Worker
+	syncWorker := worker.NewSyncWorker(blockRepo, txRepo, settingRepo, broker)
 	syncWorker.Start()
 
-	// 5. Inisialisasi HTTP Server
+	// 6. Inisialisasi HTTP Server
 	r := gin.Default()
 
 	// CORS Middleware
@@ -50,7 +61,7 @@ func main() {
 
 	apiV1 := r.Group("/api/v1")
 
-	// 6. Inisialisasi Handlers
+	// 7. Inisialisasi Handlers
 	http.NewExplorerHandler(apiV1, explorerUsecase)
 
 	port := os.Getenv("PORT")
@@ -60,3 +71,4 @@ func main() {
 	log.Printf("Explorer Service berjalan di port :%s\n", port)
 	r.Run(":" + port)
 }
+
