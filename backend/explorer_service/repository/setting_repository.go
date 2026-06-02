@@ -8,6 +8,7 @@ import (
 
 type SettingRepository interface {
 	GetAllConfigurations() ([]domain.Configuration, error)
+	GetConfigurationByUserID(userID uint) (*domain.Configuration, error)
 }
 
 type settingRepository struct {
@@ -22,4 +23,13 @@ func (r *settingRepository) GetAllConfigurations() ([]domain.Configuration, erro
 	var confs []domain.Configuration
 	err := r.db.Find(&confs).Error
 	return confs, err
+}
+
+func (r *settingRepository) GetConfigurationByUserID(userID uint) (*domain.Configuration, error) {
+	var conf domain.Configuration
+	err := r.db.Where("user_id = ?", userID).First(&conf).Error
+	if err != nil {
+		return nil, err
+	}
+	return &conf, nil
 }

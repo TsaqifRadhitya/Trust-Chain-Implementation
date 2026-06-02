@@ -1,5 +1,19 @@
 
 services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   nginx:
     image: nginx:alpine
     ports:
@@ -42,13 +56,17 @@ services:
       context: ./backend/model_service
     environment:
       - PORT=8000
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     ports:
       - "8001:8000"
         
     volumes:
       - ./backend/model_service:/app
-      
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
 
   db:
     image: postgres:15-alpine
@@ -80,10 +98,16 @@ services:
       - DB_SSLMODE=disable
       - ERP_API_URL=http://dummy_api:8080/predict
       - MODEL_API_URL=http://model_service:8000/predict
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
     depends_on:
-      - db
-      - dummy_api
-      - model_service
+      db:
+        condition: service_started
+      dummy_api:
+        condition: service_started
+      model_service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   pgdata:
