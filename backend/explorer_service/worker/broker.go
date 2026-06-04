@@ -190,7 +190,7 @@ func (b *Broker) CallModelService(payload []byte, params ModelParams) (*ModelRes
 		return nil, fmt.Errorf("gagal publish ke predict_requests: %w", err)
 	}
 
-	timeout := time.After(30 * time.Second)
+	timeout := time.After(30 * time.Minute)
 	for {
 		select {
 		case msg, ok := <-replies:
