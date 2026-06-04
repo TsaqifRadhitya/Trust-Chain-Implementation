@@ -168,6 +168,12 @@ func (w *SyncWorker) processSingleConfig(conf *domain.Configuration, erpURL, api
 				ch <- fetchResult{err: fmt.Errorf("error fetch ERP: %w", err)}
 				return
 			}
+			if resp.StatusCode != http.StatusOK {
+				bodyBytes, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				ch <- fetchResult{err: fmt.Errorf("HTTP error %d: %s", resp.StatusCode, string(bodyBytes))}
+				return
+			}
 			defer resp.Body.Close()
 
 			bodyBytes, err := io.ReadAll(resp.Body)

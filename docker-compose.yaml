@@ -65,7 +65,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
 
 
   db:
@@ -88,7 +88,7 @@ services:
     image: trufflesuite/ganache:v7.9.0
     ports:
       - "8545:8545"
-    command: --deterministic --db /app/ganache_db --host 0.0.0.0 --miner.blockTime 1
+    command: --deterministic --db /app/ganache_db --host 0.0.0.0
     volumes:
       - ganache_data:/app/ganache_db
 
