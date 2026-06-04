@@ -317,6 +317,9 @@ jobs:
             # Hapus network yang mungkin tertinggal (mengatasi error "network already exists")
             docker network prune -f
 
+            # Bersihkan seluruh cache docker dan image yang nyangkut/korup di VPS
+            docker system prune -a -f
+
             # Pull semua pre-built images dari GHCR
             docker-compose pull
 
