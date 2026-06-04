@@ -119,7 +119,7 @@ export async function fetchTrendData(): Promise<TrendData[]> {
 
 export async function fetchLiveTransactions(): Promise<Transaction[]> {
   try {
-    const response = await apiClient.get('/explorer/transactions?limit=5');
+    const response = await apiClient.get('/explorer/transactions?limit=20');
     const txs: BackendTransaction[] = response.data.data || [];
 
     return txs.map((tx) => {
