@@ -19,15 +19,26 @@ contract TrustChain {
         string status;
     }
 
+    struct CorrectionRecord {
+        string txHash;
+        bool isCorrected;
+        string actualStatus;
+        string reason;
+        string correctedBy;
+        uint256 updatedAt;
+    }
+
     mapping(string => TxRecord) private records;
     string[] private allHashes;
     uint256 public fraudCount;
 
     // Mapping dari block number ke array txHash di block tersebut
     mapping(uint256 => string[]) private blockToTxHashes;
+    mapping(string => CorrectionRecord) private corrections;
 
     event TxRecordCreated(string txHash, string fromAddr, string toAddr, uint256 value, uint256 blockNumber);
     event TxRecordUpdated(string txHash, bool isFraud, uint256 riskScore, string verdict, string flagReason, string status);
+    event TxCorrectionUpdated(string txHash, bool isCorrected, string actualStatus, string reason, string correctedBy, uint256 updatedAt);
 
     function recordTransaction(
         string memory _txHash,
@@ -78,6 +89,37 @@ contract TrustChain {
         }
         
         emit TxRecordUpdated(_txHash, _isFraud, _riskScore, _verdict, _flagReason, "success");
+    }
+
+    function addCorrection(
+        string memory _txHash,
+        bool _isCorrected,
+        string memory _actualStatus,
+        string memory _reason,
+        string memory _correctedBy
+    ) public {
+        corrections[_txHash] = CorrectionRecord({
+            txHash: _txHash,
+            isCorrected: _isCorrected,
+            actualStatus: _actualStatus,
+            reason: _reason,
+            correctedBy: _correctedBy,
+            updatedAt: block.timestamp
+        });
+        emit TxCorrectionUpdated(_txHash, _isCorrected, _actualStatus, _reason, _correctedBy, block.timestamp);
+    }
+
+    function getTransactionCorrection(string memory _txHash) public view returns (
+        bool isCorrected,
+        string memory actualStatus,
+        string memory reason,
+        string memory correctedBy,
+        uint256 updatedAt
+    ) {
+        CorrectionRecord memory c = corrections[_txHash];
+        return (
+            c.isCorrected, c.actualStatus, c.reason, c.correctedBy, c.updatedAt
+        );
     }
 
     function getTransactionBase(string memory _txHash) public view returns (
@@ -134,3 +176,4 @@ contract TrustChain {
         return blockToTxHashes[_blockNumber][_index];
     }
 }
+

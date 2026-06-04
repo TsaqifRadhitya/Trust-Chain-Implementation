@@ -54,3 +54,32 @@ export interface ChainValidationResponse {
   validated_blocks: number;
   details: ValidationDetail[];
 }
+
+export interface BackendTransaction {
+  hash: string;
+  block_height: number;
+  timestamp: string;
+  status: string;
+  from: string;
+  to: string;
+  value: number;
+  data: string;
+  is_fraud: boolean;
+  risk_score: number;
+  flag_reason: string;
+  verdict: string;
+  model_result?: {
+    is_fraud: boolean;
+    verdict: string;
+    flag_reason: string;
+    risk_score: number;
+    data: string;
+  };
+  correction?: {
+    is_corrected: boolean;
+    actual_status: string;
+    reason: string;
+    corrected_by: string;
+    updated_at: string;
+  };
+}

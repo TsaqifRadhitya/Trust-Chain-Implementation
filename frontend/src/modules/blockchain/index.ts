@@ -1,4 +1,4 @@
-import type { Case, CaseStatus, Transaction, TrendData, VerifyTxResponse, ChainValidationResponse } from './type';
+import type { Case, CaseStatus, Transaction, TrendData, VerifyTxResponse, ChainValidationResponse, BackendTransaction } from './type';
 import { apiClient } from '../../lib/axios';
 
 export const FLAG_REASONS: Record<string, string> = {
@@ -20,52 +20,39 @@ function getStoredCaseStatuses(): Record<string, CaseStatus> {
   return {};
 }
 
-interface BackendTransaction {
-  hash: string;
-  block_height: number;
-  timestamp: string;
-  status: string;
-  from: string;
-  to: string;
-  value: number;
-  data: string;
-  is_fraud: boolean;
-  risk_score: number;
-  flag_reason: string;
-  verdict: string;
-}
-
 export async function fetchCases(): Promise<Case[]> {
   try {
     const response = await apiClient.get('/explorer/transactions?limit=100');
     const txs: BackendTransaction[] = response.data.data || [];
-    
-    // Filter fraud transactions
-    const fraudTxs = txs.filter((tx) => tx.is_fraud === true);
-    
-    const statuses = getStoredCaseStatuses();
-    
+
+    // Filter transactions that are originally fraud from the ML model
+    const fraudTxs = txs.filter((tx) => tx.model_result && tx.model_result.is_fraud === true);
+
     return fraudTxs.map((tx) => {
       // Extract short ID
       const shortId = `CASE-${tx.hash.substring(2, 6).toUpperCase()}`;
-      
+
       // Try to parse original ERP payload for context
       let partner = tx.to || 'Unknown Vendor';
+      const dataStr = tx.model_result ? tx.model_result.data : tx.data;
       try {
-        const payload = JSON.parse(tx.data) as { vendor_name?: string };
+        const payload = JSON.parse(dataStr) as { vendor_name?: string };
         partner = payload.vendor_name || partner;
       } catch {
         // Ignored
       }
 
-      // Find saved status, default to Open
-      const savedStatus = statuses[shortId] || 'Open';
+      // Find status: resolved if correction is registered
+      const savedStatus: CaseStatus = tx.correction && tx.correction.is_corrected ? 'Resolved' : 'Open';
 
       // Format currency (IDR)
       const amountFormat = new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR'
       }).format(tx.value);
+
+      const risk = tx.model_result ? tx.model_result.risk_score : tx.risk_score;
+      const type = tx.model_result ? (tx.model_result.flag_reason || tx.model_result.verdict) : (tx.flag_reason || tx.verdict);
 
       return {
         id: shortId,
@@ -74,8 +61,8 @@ export async function fetchCases(): Promise<Case[]> {
         status: savedStatus,
         partner: partner,
         amount: amountFormat,
-        risk: tx.risk_score,
-        type: tx.flag_reason || tx.verdict || 'Anomaly',
+        risk: risk,
+        type: type || 'Anomaly',
         originalHash: tx.hash
       };
     });
@@ -85,11 +72,23 @@ export async function fetchCases(): Promise<Case[]> {
   }
 }
 
-export async function updateCaseStatus(caseId: string, status: CaseStatus): Promise<Case> {
+export async function updateCaseStatus(caseId: string, status: CaseStatus, txHash?: string): Promise<Case> {
   const statuses = getStoredCaseStatuses();
   statuses[caseId] = status;
   localStorage.setItem('tc_case_statuses', JSON.stringify(statuses));
-  
+
+  if (status === 'Resolved' && txHash) {
+    try {
+      await apiClient.post(`/explorer/transactions/${txHash}/correct`, {
+        actual_status: 'Safe',
+        reason: 'Marked as safe by investigator',
+        corrected_by: 'Investigator'
+      });
+    } catch (err) {
+      console.error('Failed to post correction to backend:', err);
+    }
+  }
+
   return { id: caseId, status } as Case;
 }
 
@@ -97,7 +96,7 @@ export async function fetchTrendData(): Promise<TrendData[]> {
   try {
     const response = await apiClient.get('/explorer/transactions?limit=50');
     const txs: BackendTransaction[] = response.data.data || [];
-    
+
     // Sort transactions chronologically (oldest first for charts)
     const sortedTxs = [...txs].reverse();
 
@@ -122,7 +121,7 @@ export async function fetchLiveTransactions(): Promise<Transaction[]> {
   try {
     const response = await apiClient.get('/explorer/transactions?limit=20');
     const txs: BackendTransaction[] = response.data.data || [];
-    
+
     return txs.map((tx) => {
       let partner = tx.to || 'Unknown Vendor';
       try {
@@ -164,7 +163,7 @@ export async function verifyTx(hash: string): Promise<VerifyTxResponse> {
   try {
     const response = await apiClient.get(`/explorer/transactions/${hash}`);
     const tx = response.data.data;
-    
+
     let payload = {};
     try {
       payload = JSON.parse(tx.data) as Record<string, unknown>;

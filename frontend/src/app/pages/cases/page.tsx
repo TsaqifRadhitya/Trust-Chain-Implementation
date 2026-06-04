@@ -8,7 +8,7 @@ import { FLAG_REASONS } from '../../../modules/blockchain';
 import type { Case, CaseStatus } from '../../../modules/blockchain/type';
 import Guard from '../../../components/Guard';
 
-const STATUS_FILTERS = ['All', 'Open', 'In Review', 'Resolved'] as const;
+const STATUS_FILTERS = ['All', 'Open', 'Resolved'] as const;
 type FilterOption = typeof STATUS_FILTERS[number];
 
 export default function CaseManagement() {
@@ -34,13 +34,9 @@ export default function CaseManagement() {
 
   const handleUpdateStatus = async (caseId: string, newStatus: CaseStatus) => {
     try {
-      await updateStatus({ id: caseId, status: newStatus });
+      await updateStatus({ id: caseId, status: newStatus, txHash: selectedCase?.originalHash });
       setSelectedCase(null);
-      if (newStatus === 'In Review') {
-        toast(`${caseId} dieskalasi ke Compliance.`, 'warning');
-      } else {
-        toast(`${caseId} ditandai aman dan diselesaikan.`, 'success');
-      }
+      toast(`${caseId} ditandai aman dan diselesaikan.`, 'success');
     } catch (e: unknown) {
       toast(`Gagal mengubah status: ${(e as Error).message}`, 'error');
     }
@@ -130,14 +126,15 @@ export default function CaseManagement() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                         c.status === 'Open' ? 'bg-danger/20 text-danger border border-danger/30' :
-                        c.status === 'In Review' ? 'bg-warning/20 text-warning border border-warning/30' :
                         'bg-success/20 text-success border border-success/30'}`}>{c.status}</span>
                     </td>
                     <Guard>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {c.status !== 'Resolved'
-                          ? <button onClick={() => setSelectedCase(c)} className="text-primary hover:text-white font-medium transition-colors">Investigate</button>
-                          : <span className="text-success text-xs font-medium">✓ Resolved</span>}
+                        {c.status === 'Open' ? (
+                          <button onClick={() => setSelectedCase(c)} className="text-primary hover:text-white font-medium transition-colors">Investigate</button>
+                        ) : (
+                          <span className="text-success text-xs font-medium">✓ Resolved</span>
+                        )}
                       </td>
                     </Guard>
                   </tr>
@@ -159,7 +156,7 @@ export default function CaseManagement() {
               <div className="flex items-start justify-between mb-2">
                 <h3 className="text-xl font-bold text-white">Investigation: {selectedCase.id}</h3>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                  selectedCase.status === 'Open' ? 'bg-danger/20 text-danger border border-danger/30' : 'bg-warning/20 text-warning border border-warning/30'}`}>
+                  selectedCase.status === 'Open' ? 'bg-danger/20 text-danger border border-danger/30' : 'bg-success/20 text-success border border-success/30'}`}>
                   {selectedCase.status}
                 </span>
               </div>
@@ -187,9 +184,8 @@ export default function CaseManagement() {
                 <button onClick={() => setSelectedCase(null)} className="px-4 py-2 rounded-lg border border-slate-600 text-white hover:bg-slate-700 transition-colors text-sm">Close</button>
                 <Guard>
                   {selectedCase.status === 'Open' && (
-                    <button onClick={() => handleUpdateStatus(selectedCase.id, 'In Review')} className="px-4 py-2 rounded-lg bg-warning text-white hover:bg-warning/90 transition-colors text-sm font-medium">Escalate to Compliance</button>
+                    <button onClick={() => handleUpdateStatus(selectedCase.id, 'Resolved')} className="px-4 py-2 rounded-lg bg-success text-white hover:bg-success/90 transition-colors text-sm font-medium">Mark as Safe</button>
                   )}
-                  <button onClick={() => handleUpdateStatus(selectedCase.id, 'Resolved')} className="px-4 py-2 rounded-lg bg-success text-white hover:bg-success/90 transition-colors text-sm font-medium">Mark as Safe</button>
                 </Guard>
               </div>
             </motion.div>

@@ -32,8 +32,12 @@ type BlockchainRepository interface {
 	GetTransactionsByAddress(address string) ([]domain.Transaction, error)
 	RecordTransaction(txHash string, fromAddr string, toAddr string, value float64, fee float64, gasUsed int, data string) (string, error)
 	UpdateTransactionPrediction(txHash string, isFraud bool, riskScore int, verdict string, flagReason string) (string, error)
+<<<<<<< HEAD
 	GetBlockHeaderOnly(hashOrHeight string) (*domain.Block, error)
 	GetStats() (int, int, error)
+=======
+	AddCorrection(txHash string, actualStatus string, reason string, correctedBy string) (*domain.Correction, error)
+>>>>>>> e857de251da799f90dbbe5428e7c365c73a9e567
 }
 
 type blockchainRepository struct {
@@ -355,6 +359,28 @@ func (r *blockchainRepository) GetTransactionByHash(hash string) (*domain.Transa
 	data := predRes[4].(string)
 	status := predRes[5].(string)
 
+	// Fetch correction from smart contract first
+	var correction domain.Correction
+	corrRes, corrErr := r.callContractRead("getTransactionCorrection", hash)
+	if corrErr == nil && len(corrRes) >= 5 {
+		isCorrected := corrRes[0].(bool)
+		actualStatus := corrRes[1].(string)
+		reason := corrRes[2].(string)
+		correctedBy := corrRes[3].(string)
+		updatedAtBig := corrRes[4].(*big.Int)
+
+		if isCorrected {
+			correction = domain.Correction{
+				TxHash:       hash,
+				IsCorrected:  isCorrected,
+				ActualStatus: actualStatus,
+				Reason:       reason,
+				CorrectedBy:  correctedBy,
+				UpdatedAt:    time.Unix(updatedAtBig.Int64(), 0),
+			}
+		}
+	}
+
 	dTx := domain.Transaction{
 		Hash:        baseRes[0].(string),
 		FromAddress: baseRes[1].(string),
@@ -364,16 +390,65 @@ func (r *blockchainRepository) GetTransactionByHash(hash string) (*domain.Transa
 		GasUsed:     int(gasUsedBig.Uint64()),
 		Timestamp:   time.Unix(timestampBig.Int64(), 0),
 		BlockHeight: int(blockNumBig.Uint64()),
-		IsFraud:     isFraud,
-		Verdict:     verdict,
-		FlagReason:  flagReason,
-		RiskScore:   int(riskScoreBig.Uint64()),
-		Data:        data,
 		Status:      status,
+		ModelResult: domain.ModelResult{
+			IsFraud:    isFraud,
+			Verdict:    verdict,
+			FlagReason: flagReason,
+			RiskScore:  int(riskScoreBig.Uint64()),
+			Data:       data,
+		},
+		Correction: correction,
 	}
+
+	// Evaluate final fraud decision
+	// If the model says it is fraud, but user has corrected it as Safe, we override IsFraud to false.
+	if dTx.ModelResult.IsFraud {
+		if correction.IsCorrected && correction.ActualStatus == "Safe" {
+			dTx.IsFraud = false
+			dTx.Verdict = "corrected_safe"
+		} else {
+			dTx.IsFraud = true
+			dTx.Verdict = dTx.ModelResult.Verdict
+		}
+	} else {
+		dTx.IsFraud = false
+		dTx.Verdict = dTx.ModelResult.Verdict
+	}
+	dTx.FlagReason = dTx.ModelResult.FlagReason
+	dTx.RiskScore = dTx.ModelResult.RiskScore
+	dTx.Data = dTx.ModelResult.Data
 
 	return &dTx, nil
 }
+
+func (r *blockchainRepository) AddCorrection(txHash string, actualStatus string, reason string, correctedBy string) (*domain.Correction, error) {
+	log.Printf("[Blockchain Repository] Recording correction on blockchain for TxHash: %s (Status: %s)\n", txHash, actualStatus)
+
+	// Record correction on smart contract
+	evmHash, err := r.callContractWrite(
+		"addCorrection",
+		txHash,
+		true,
+		actualStatus,
+		reason,
+		correctedBy,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to record correction on-chain: %w", err)
+	}
+	log.Printf("[Blockchain Repository] ✓ Correction recorded on-chain. EVM TxHash: %s\n", evmHash)
+
+	return &domain.Correction{
+		TxHash:       txHash,
+		IsCorrected:  true,
+		ActualStatus: actualStatus,
+		Reason:       reason,
+		CorrectedBy:  correctedBy,
+		UpdatedAt:    time.Now(),
+	}, nil
+}
+
 
 func (r *blockchainRepository) GetRecentTransactions(limit int) ([]domain.Transaction, error) {
 	if limit <= 0 {

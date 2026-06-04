@@ -24,7 +24,11 @@ func NewExplorerHandler(r *gin.RouterGroup, u usecase.ExplorerUsecase) {
 		explorerRoutes.GET("/address/:address", handler.GetAddressDetail)
 		explorerRoutes.GET("/search", handler.Search)
 		explorerRoutes.GET("/blockchain/validate", handler.ValidateChain)
+<<<<<<< HEAD
 		explorerRoutes.GET("/stats", handler.GetStats)
+=======
+		explorerRoutes.POST("/transactions/:hash/correct", handler.AddCorrection)
+>>>>>>> e857de251da799f90dbbe5428e7c365c73a9e567
 	}
 }
 
@@ -107,11 +111,36 @@ func (h *ExplorerHandler) ValidateChain(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": 200, "message": "Blockchain validation completed", "data": result})
 }
 
+<<<<<<< HEAD
 func (h *ExplorerHandler) GetStats(c *gin.Context) {
 	stats, err := h.usecase.GetStats()
+=======
+type CorrectionRequest struct {
+	ActualStatus string `json:"actual_status" binding:"required"`
+	Reason       string `json:"reason"`
+	CorrectedBy  string `json:"corrected_by"`
+}
+
+func (h *ExplorerHandler) AddCorrection(c *gin.Context) {
+	hash := c.Param("hash")
+	var req CorrectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": 400, "message": err.Error(), "data": nil})
+		return
+	}
+
+	correction, err := h.usecase.AddCorrection(hash, req.ActualStatus, req.Reason, req.CorrectedBy)
+>>>>>>> e857de251da799f90dbbe5428e7c365c73a9e567
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": 500, "message": err.Error(), "data": nil})
 		return
 	}
+<<<<<<< HEAD
 	c.JSON(http.StatusOK, gin.H{"status": 200, "message": "Dashboard stats retrieved", "data": stats})
 }
+=======
+
+	c.JSON(http.StatusOK, gin.H{"status": 200, "message": "Correction registered successfully", "data": correction})
+}
+
+>>>>>>> e857de251da799f90dbbe5428e7c365c73a9e567
