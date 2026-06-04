@@ -3,6 +3,7 @@ package usecase
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"explorer_service/domain"
@@ -133,21 +134,52 @@ func (u *explorerUsecase) ValidateChain() (*ChainValidationResult, error) {
 		Details:     make([]ValidationDetail, 0),
 	}
 
+	if latest <= 0 {
+		return result, nil
+	}
+
+	// Limit validation to last 500 blocks if the chain is huge
+	startBlock := 1
+	if latest > 500 {
+		startBlock = latest - 499
+	}
+
+	totalToFetch := latest - startBlock + 1
+	blocks := make([]*domain.Block, totalToFetch)
+	errs := make([]error, totalToFetch)
+
+	var wg sync.WaitGroup
+	// Concurrently fetch blocks
+	for i := 0; i < totalToFetch; i++ {
+		wg.Add(1)
+		go func(idx int, height int) {
+			defer wg.Done()
+			b, err := u.blockchainRepo.GetBlockHeaderOnly(strconv.Itoa(height))
+			if err != nil {
+				errs[idx] = err
+				return
+			}
+			blocks[idx] = b
+		}(i, startBlock+i)
+	}
+	wg.Wait()
+
 	var prevHash string
-	for i := 1; i <= latest; i++ {
-		block, err := u.blockchainRepo.GetBlockHeaderOnly(strconv.Itoa(i))
+	for i := 0; i < totalToFetch; i++ {
+		height := startBlock + i
 		detail := ValidationDetail{
-			Height: i,
+			Height: height,
 		}
 
-		if err != nil {
+		if errs[i] != nil || blocks[i] == nil {
 			detail.Status = "CORRUPTED"
-			detail.Error = fmt.Sprintf("Failed to fetch block: %v", err)
+			detail.Error = fmt.Sprintf("Failed to fetch block: %v", errs[i])
 			result.IsValid = false
 			result.Details = append(result.Details, detail)
 			continue
 		}
 
+		block := blocks[i]
 		detail.Hash = block.Hash
 		detail.ParentHash = block.ParentHash
 		detail.Timestamp = block.Timestamp
@@ -155,7 +187,9 @@ func (u *explorerUsecase) ValidateChain() (*ChainValidationResult, error) {
 		detail.PreviousBlockHash = prevHash
 
 		// Validate block parent hash link
-		if i > 1 {
+		// If we limited blocks, the first block in the loop might not be block 1.
+		// So we only compare if we have a prevHash from the previous loop iteration.
+		if prevHash != "" {
 			if block.ParentHash != prevHash {
 				detail.Status = "CORRUPTED"
 				detail.Error = fmt.Sprintf("Hash chain broken: ParentHash (%s) does not match previous block hash (%s)", block.ParentHash, prevHash)
@@ -164,7 +198,7 @@ func (u *explorerUsecase) ValidateChain() (*ChainValidationResult, error) {
 				detail.Status = "OK"
 			}
 		} else {
-			// Genesis block verification
+			// First block checked in this batch
 			detail.Status = "OK"
 		}
 

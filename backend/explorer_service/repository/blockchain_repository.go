@@ -467,20 +467,40 @@ func (r *blockchainRepository) GetRecentTransactions(limit int) ([]domain.Transa
 		end = 0
 	}
 
-	for i := start; i >= end; i-- {
-		hashRes, err := r.callContractRead("getTransactionHashAtIndex", big.NewInt(i))
-		if err != nil {
-			continue
-		}
-		txHash := hashRes[0].(string)
+	count := int(start - end + 1)
+	if count <= 0 {
+		return txs, nil
+	}
 
-		tx, err := r.GetTransactionByHash(txHash)
-		if err == nil && tx != nil {
-			txs = append(txs, *tx)
+	txs = make([]domain.Transaction, count)
+	var wg sync.WaitGroup
+
+	for i := start; i >= end; i-- {
+		wg.Add(1)
+		go func(idx int64, arrIdx int) {
+			defer wg.Done()
+			hashRes, err := r.callContractRead("getTransactionHashAtIndex", big.NewInt(idx))
+			if err != nil {
+				return
+			}
+			txHash := hashRes[0].(string)
+
+			tx, err := r.GetTransactionByHash(txHash)
+			if err == nil && tx != nil {
+				txs[arrIdx] = *tx
+			}
+		}(i, int(start-i))
+	}
+	wg.Wait()
+
+	var validTxs []domain.Transaction
+	for _, tx := range txs {
+		if tx.Hash != "" {
+			validTxs = append(validTxs, tx)
 		}
 	}
 
-	return txs, nil
+	return validTxs, nil
 }
 
 func (r *blockchainRepository) GetBalanceByAddress(address string) (float64, error) {
