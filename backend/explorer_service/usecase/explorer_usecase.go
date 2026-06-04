@@ -35,11 +35,8 @@ type ExplorerUsecase interface {
 	GetAddressDetail(address string) (map[string]interface{}, error)
 	Search(query string) (map[string]interface{}, error)
 	ValidateChain() (*ChainValidationResult, error)
-<<<<<<< HEAD
 	GetStats() (map[string]interface{}, error)
-=======
 	AddCorrection(txHash string, actualStatus string, reason string, correctedBy string) (*domain.Correction, error)
->>>>>>> e857de251da799f90dbbe5428e7c365c73a9e567
 }
 
 type explorerUsecase struct {
@@ -179,7 +176,6 @@ func (u *explorerUsecase) ValidateChain() (*ChainValidationResult, error) {
 	return result, nil
 }
 
-<<<<<<< HEAD
 func (u *explorerUsecase) GetStats() (map[string]interface{}, error) {
 	total, fraud, err := u.blockchainRepo.GetStats()
 	if err != nil {
@@ -190,9 +186,7 @@ func (u *explorerUsecase) GetStats() (map[string]interface{}, error) {
 		"total_anomalies":    fraud,
 	}, nil
 }
-=======
 func (u *explorerUsecase) AddCorrection(txHash string, actualStatus string, reason string, correctedBy string) (*domain.Correction, error) {
 	return u.blockchainRepo.AddCorrection(txHash, actualStatus, reason, correctedBy)
 }
 
->>>>>>> e857de251da799f90dbbe5428e7c365c73a9e567

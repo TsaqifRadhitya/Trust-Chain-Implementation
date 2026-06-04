@@ -32,12 +32,9 @@ type BlockchainRepository interface {
 	GetTransactionsByAddress(address string) ([]domain.Transaction, error)
 	RecordTransaction(txHash string, fromAddr string, toAddr string, value float64, fee float64, gasUsed int, data string) (string, error)
 	UpdateTransactionPrediction(txHash string, isFraud bool, riskScore int, verdict string, flagReason string) (string, error)
-<<<<<<< HEAD
 	GetBlockHeaderOnly(hashOrHeight string) (*domain.Block, error)
 	GetStats() (int, int, error)
-=======
 	AddCorrection(txHash string, actualStatus string, reason string, correctedBy string) (*domain.Correction, error)
->>>>>>> e857de251da799f90dbbe5428e7c365c73a9e567
 }
 
 type blockchainRepository struct {
