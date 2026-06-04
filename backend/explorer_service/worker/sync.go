@@ -47,10 +47,10 @@ func (w *SyncWorker) Start() {
 	// Goroutine consumer predict_responses — berjalan selamanya
 	go w.startPredictResponseConsumer()
 
-	// Goroutine scheduler — trigger pertama langsung, lalu setiap 30 menit
+	// Goroutine scheduler — trigger pertama langsung, lalu setiap 5 menit
 	go func() {
 		w.publishAllJobs()
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
 		for range ticker.C {
 			w.publishAllJobs()
@@ -141,7 +141,7 @@ func (w *SyncWorker) handleMessage(msg amqp.Delivery) {
 // processSingleConfig melakukan sinkronisasi transaksi secara batch menggunakan goroutine:
 // fetch ERP secara paralel → simpan ke blockchain (status pending) → publish ke predict_requests queue.
 func (w *SyncWorker) processSingleConfig(conf *domain.Configuration, erpURL, apiKey string) error {
-	batchSize := 5
+	batchSize := 2
 	type fetchResult struct {
 		body []byte
 		err  error

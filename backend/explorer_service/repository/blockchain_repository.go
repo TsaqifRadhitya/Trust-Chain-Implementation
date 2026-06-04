@@ -43,6 +43,7 @@ type blockchainRepository struct {
 	senderAddress   common.Address
 	contractAddress common.Address
 	mu              sync.Mutex
+	txCache         sync.Map
 }
 
 func NewBlockchainRepository(ganacheURL string, privateKeyHex string) (BlockchainRepository, error) {
@@ -330,6 +331,11 @@ func (r *blockchainRepository) GetBlockByHashOrHeight(hashOrHeight string) (*dom
 }
 
 func (r *blockchainRepository) GetTransactionByHash(hash string) (*domain.Transaction, error) {
+	if val, ok := r.txCache.Load(hash); ok {
+		tx := val.(domain.Transaction)
+		return &tx, nil
+	}
+
 	baseRes, err := r.callContractRead("getTransactionBase", hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transaction base for hash %s: %w", hash, err)
@@ -416,6 +422,7 @@ func (r *blockchainRepository) GetTransactionByHash(hash string) (*domain.Transa
 	dTx.RiskScore = dTx.ModelResult.RiskScore
 	dTx.Data = dTx.ModelResult.Data
 
+	r.txCache.Store(hash, dTx)
 	return &dTx, nil
 }
 
@@ -435,6 +442,8 @@ func (r *blockchainRepository) AddCorrection(txHash string, actualStatus string,
 		return nil, fmt.Errorf("failed to record correction on-chain: %w", err)
 	}
 	log.Printf("[Blockchain Repository] ✓ Correction recorded on-chain. EVM TxHash: %s\n", evmHash)
+
+	r.txCache.Delete(txHash)
 
 	return &domain.Correction{
 		TxHash:       txHash,
@@ -582,6 +591,8 @@ func (r *blockchainRepository) UpdateTransactionPrediction(txHash string, isFrau
 	if err != nil {
 		return "", fmt.Errorf("failed to update prediction: %w", err)
 	}
+
+	r.txCache.Delete(txHash)
 
 	return evmHash, nil
 }
