@@ -50,7 +50,7 @@ func (w *SyncWorker) Start() {
 	// Goroutine scheduler — trigger pertama langsung, lalu setiap 30 menit
 	go func() {
 		w.publishAllJobs()
-		ticker := time.NewTicker(30 * time.Minute)
+		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
 			w.publishAllJobs()

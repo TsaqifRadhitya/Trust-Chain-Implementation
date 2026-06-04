@@ -4,7 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useDashboard } from './hooks/useDashboard';
 
 export default function Dashboard() {
-  const { trendData, liveTxs, isLoadingTrend, isLoadingTxs } = useDashboard();
+  const { trendData, liveTxs, isLoadingTrend, isLoadingTxs, stats, isLoadingStats } = useDashboard();
 
   return (
     <div className="space-y-6">
@@ -23,9 +23,9 @@ export default function Dashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { title: 'Processed Today', value: '142,593', icon: Activity, color: 'text-primary', bg: 'bg-primary/10' },
-          { title: 'Anomalies Detected', value: '24', icon: ShieldAlert, color: 'text-danger', bg: 'bg-danger/10' },
-          { title: 'Blockchain Verified', value: '100%', icon: CheckCircle, color: 'text-success', bg: 'bg-success/10' },
+          { title: 'Processed Today', value: isLoadingStats ? '...' : stats.processed.toLocaleString(), icon: Activity, color: 'text-primary', bg: 'bg-primary/10' },
+          { title: 'Anomalies Detected', value: isLoadingStats ? '...' : stats.anomalies.toLocaleString(), icon: ShieldAlert, color: 'text-danger', bg: 'bg-danger/10' },
+          { title: 'Blockchain Verified', value: isLoadingStats ? '...' : stats.verified, icon: CheckCircle, color: 'text-success', bg: 'bg-success/10' },
         ].map((stat, i) => (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}

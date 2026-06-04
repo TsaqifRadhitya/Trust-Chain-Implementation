@@ -24,6 +24,7 @@ func NewExplorerHandler(r *gin.RouterGroup, u usecase.ExplorerUsecase) {
 		explorerRoutes.GET("/address/:address", handler.GetAddressDetail)
 		explorerRoutes.GET("/search", handler.Search)
 		explorerRoutes.GET("/blockchain/validate", handler.ValidateChain)
+		explorerRoutes.GET("/stats", handler.GetStats)
 	}
 }
 
@@ -104,4 +105,13 @@ func (h *ExplorerHandler) ValidateChain(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": 200, "message": "Blockchain validation completed", "data": result})
+}
+
+func (h *ExplorerHandler) GetStats(c *gin.Context) {
+	stats, err := h.usecase.GetStats()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": 500, "message": err.Error(), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": 200, "message": "Dashboard stats retrieved", "data": stats})
 }

@@ -62,7 +62,7 @@ func predictHandler(w http.ResponseWriter, r *http.Request) {
 	output.VendorCategory = categories[rand.Intn(len(categories))]
 
 	// ── MENENTUKAN PELUANG FRAUD (Misal: 10% Fraud, 90% Normal) ──
-	isFraud := rand.Float64() < 0.10
+	isFraud := rand.Float64() < 0.50
 
 	if isFraud {
 		// ==========================================

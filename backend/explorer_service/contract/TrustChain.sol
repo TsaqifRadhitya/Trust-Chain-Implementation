@@ -21,6 +21,7 @@ contract TrustChain {
 
     mapping(string => TxRecord) private records;
     string[] private allHashes;
+    uint256 public fraudCount;
 
     // Mapping dari block number ke array txHash di block tersebut
     mapping(uint256 => string[]) private blockToTxHashes;
@@ -71,6 +72,11 @@ contract TrustChain {
         r.verdict = _verdict;
         r.flagReason = _flagReason;
         r.status = "success";
+        
+        if (_isFraud) {
+            fraudCount++;
+        }
+        
         emit TxRecordUpdated(_txHash, _isFraud, _riskScore, _verdict, _flagReason, "success");
     }
 
@@ -108,6 +114,10 @@ contract TrustChain {
 
     function getTransactionCount() public view returns (uint256) {
         return allHashes.length;
+    }
+
+    function getStats() public view returns (uint256 totalTxs, uint256 totalFraud) {
+        return (allHashes.length, fraudCount);
     }
 
     function getTransactionHashAtIndex(uint256 index) public view returns (string memory) {

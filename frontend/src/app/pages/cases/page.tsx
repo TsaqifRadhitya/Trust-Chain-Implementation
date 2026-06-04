@@ -25,8 +25,8 @@ export default function CaseManagement() {
   const filteredCases = useMemo(() => {
     return cases.filter((c) => {
       const q = searchQuery.toLowerCase();
-      const matchSearch = !q || c.id.toLowerCase().includes(q) || c.partner.toLowerCase().includes(q)
-        || c.type.toLowerCase().includes(q) || c.txId.toLowerCase().includes(q);
+      const matchSearch = !q || (c.id?.toLowerCase() || '').includes(q) || (c.partner?.toLowerCase() || '').includes(q)
+        || (c.type?.toLowerCase() || '').includes(q) || (c.txId?.toLowerCase() || '').includes(q);
       const matchStatus = statusFilter === 'All' || c.status === statusFilter;
       return matchSearch && matchStatus;
     });

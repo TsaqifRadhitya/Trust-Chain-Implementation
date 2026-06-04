@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"explorer_service/contract"
@@ -31,6 +32,8 @@ type BlockchainRepository interface {
 	GetTransactionsByAddress(address string) ([]domain.Transaction, error)
 	RecordTransaction(txHash string, fromAddr string, toAddr string, value float64, fee float64, gasUsed int, data string) (string, error)
 	UpdateTransactionPrediction(txHash string, isFraud bool, riskScore int, verdict string, flagReason string) (string, error)
+	GetBlockHeaderOnly(hashOrHeight string) (*domain.Block, error)
+	GetStats() (int, int, error)
 }
 
 type blockchainRepository struct {
@@ -38,6 +41,7 @@ type blockchainRepository struct {
 	privateKey      *ecdsa.PrivateKey
 	senderAddress   common.Address
 	contractAddress common.Address
+	mu              sync.Mutex
 }
 
 func NewBlockchainRepository(ganacheURL string, privateKeyHex string) (BlockchainRepository, error) {
@@ -126,6 +130,9 @@ func deployContract(client *ethclient.Client, privateKey *ecdsa.PrivateKey, send
 }
 
 func (r *blockchainRepository) callContractWrite(methodName string, args ...interface{}) (string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	log.Printf("[Blockchain Repository] Writing to contract: %s\n", methodName)
 	parsedABI, err := abi.JSON(strings.NewReader(contract.TrustChainABI))
 	if err != nil {
@@ -142,7 +149,7 @@ func (r *blockchainRepository) callContractWrite(methodName string, args ...inte
 		return "", err
 	}
 
-	gasLimit := uint64(500000)
+	gasLimit := uint64(3000000)
 	gasPrice, err := r.client.SuggestGasPrice(context.Background())
 	if err != nil {
 		return "", err
@@ -485,4 +492,41 @@ func (r *blockchainRepository) UpdateTransactionPrediction(txHash string, isFrau
 	}
 
 	return evmHash, nil
+}
+
+func (r *blockchainRepository) GetBlockHeaderOnly(hashOrHeight string) (*domain.Block, error) {
+	var block *types.Block
+	var err error
+
+	if height, errHeight := strconv.Atoi(hashOrHeight); errHeight == nil {
+		block, err = r.client.BlockByNumber(context.Background(), big.NewInt(int64(height)))
+	} else {
+		block, err = r.client.BlockByHash(context.Background(), common.HexToHash(hashOrHeight))
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.Block{
+		Height:           int(block.NumberU64()),
+		Hash:             block.Hash().Hex(),
+		ParentHash:       block.ParentHash().Hex(),
+		Timestamp:        time.Unix(int64(block.Time()), 0),
+		Size:             int(block.Size()),
+		Miner:            block.Coinbase().Hex(),
+		TransactionCount: 0,
+		Transactions:     nil,
+	}, nil
+}
+
+func (r *blockchainRepository) GetStats() (int, int, error) {
+	statsRes, err := r.callContractRead("getStats")
+	if err != nil {
+		return 0, 0, err
+	}
+	
+	totalTxs := int(statsRes[0].(*big.Int).Int64())
+	totalFraud := int(statsRes[1].(*big.Int).Int64())
+	return totalTxs, totalFraud, nil
 }

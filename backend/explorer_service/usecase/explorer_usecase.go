@@ -35,6 +35,7 @@ type ExplorerUsecase interface {
 	GetAddressDetail(address string) (map[string]interface{}, error)
 	Search(query string) (map[string]interface{}, error)
 	ValidateChain() (*ChainValidationResult, error)
+	GetStats() (map[string]interface{}, error)
 }
 
 type explorerUsecase struct {
@@ -133,7 +134,7 @@ func (u *explorerUsecase) ValidateChain() (*ChainValidationResult, error) {
 
 	var prevHash string
 	for i := 1; i <= latest; i++ {
-		block, err := u.blockchainRepo.GetBlockByHashOrHeight(strconv.Itoa(i))
+		block, err := u.blockchainRepo.GetBlockHeaderOnly(strconv.Itoa(i))
 		detail := ValidationDetail{
 			Height: i,
 		}
@@ -172,4 +173,15 @@ func (u *explorerUsecase) ValidateChain() (*ChainValidationResult, error) {
 	}
 
 	return result, nil
+}
+
+func (u *explorerUsecase) GetStats() (map[string]interface{}, error) {
+	total, fraud, err := u.blockchainRepo.GetStats()
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"total_transactions": total,
+		"total_anomalies":    fraud,
+	}, nil
 }
