@@ -3,6 +3,8 @@ import autoTable from 'jspdf-autotable';
 import { fetchDashboardStats, fetchCases, fetchLiveTransactions } from '../../../modules/blockchain';
 import type { Report } from '../../../modules/report/type';
 
+type JsPdfWithAutoTable = jsPDF & { lastAutoTable: { finalY: number } };
+
 export const generateOJKReport = async (report: Report) => {
   const doc = new jsPDF();
   
@@ -49,7 +51,7 @@ export const generateOJKReport = async (report: Report) => {
   });
 
   // 2. RISK INDEX PER KATEGORI RISIKO
-  let finalY = (doc as any).lastAutoTable.finalY + 10;
+  let finalY = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
   
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
@@ -83,7 +85,7 @@ export const generateOJKReport = async (report: Report) => {
   });
 
   // 3. VENDOR RISK PROFILING — TOP 10 VENDOR BERISIKO TINGGI
-  finalY = (doc as any).lastAutoTable.finalY + 10;
+  finalY = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
   
   if (finalY > 250) {
     doc.addPage();
@@ -113,7 +115,7 @@ export const generateOJKReport = async (report: Report) => {
   });
 
   // 4. KINERJA SISTEM DETEKSI FRAUD (AI METRICS)
-  finalY = (doc as any).lastAutoTable.finalY + 10;
+  finalY = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
   
   if (finalY > 250) {
     doc.addPage();
@@ -144,7 +146,7 @@ export const generateOJKReport = async (report: Report) => {
   });
 
   // 5. PERNYATAAN & PENGESAHAN
-  finalY = (doc as any).lastAutoTable.finalY + 10;
+  finalY = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
   
   if (finalY > 220) {
     doc.addPage();
@@ -208,7 +210,7 @@ export const generateInternalAuditReport = async (report: Report) => {
   });
 
   // 2. RINGKASAN AKTIVITAS TRANSAKSI
-  let finalY = (doc as any).lastAutoTable.finalY + 10;
+  let finalY = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
   
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
@@ -233,7 +235,7 @@ export const generateInternalAuditReport = async (report: Report) => {
   });
 
   // 3. BLOCKCHAIN TRANSACTION LOG — SAMPLE
-  finalY = (doc as any).lastAutoTable.finalY + 10;
+  finalY = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
   if (finalY > 240) { doc.addPage(); finalY = 20; }
 
   doc.setFont("helvetica", "bold");
@@ -273,10 +275,10 @@ export const generateInternalAuditReport = async (report: Report) => {
   });
 
   doc.setFontSize(8);
-  doc.text("* Hash ditampilkan 16 karakter pertama. Full hash (64 karakter) tersedia di blockchain explorer TrustChain AI. Chain ID: 1337 (Ganache Local EVM).", 14, (doc as any).lastAutoTable.finalY + 5);
+  doc.text("* Hash ditampilkan 16 karakter pertama. Full hash (64 karakter) tersedia di blockchain explorer TrustChain AI. Chain ID: 1337 (Ganache Local EVM).", 14, (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 5);
 
   // 4. EXPLAINABLE AI (XAI)
-  finalY = (doc as any).lastAutoTable.finalY + 15;
+  finalY = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 15;
   if (finalY > 220) { doc.addPage(); finalY = 20; }
 
   doc.setFont("helvetica", "bold");
