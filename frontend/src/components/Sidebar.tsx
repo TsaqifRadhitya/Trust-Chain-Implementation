@@ -66,8 +66,7 @@ export default function Sidebar() {
           <div className="absolute top-0 right-0 p-2 opacity-20">
             <Hexagon className="w-16 h-16" />
           </div>
-          <h4 className="text-white text-sm font-semibold mb-1">AI Engine Active</h4>
-          <p className="text-xs text-textMuted">Processing 1.2k tx/s</p>
+          <h4 className="text-white text-sm font-semibold mb-1">AI Engine Active</h4>          
           <div className="mt-3 flex items-center space-x-2">
             <span className="flex h-2 w-2 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>

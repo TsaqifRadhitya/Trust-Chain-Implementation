@@ -194,6 +194,45 @@ export default function Configuration() {
             </div>
           </div>
         </div>
+
+        {/* Expected API Format */}
+        <div className="bg-surface border border-slate-700/50 rounded-2xl p-6">
+          <div className="flex items-center mb-6">
+            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center mr-4">
+              <Database className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">Expected ERP API Response Format</h2>
+              <p className="text-sm text-textMuted">Ensure your ERP system returns data in this JSON format.</p>
+            </div>
+          </div>
+          <div className="bg-slate-900 rounded-lg p-4 border border-slate-700/50 overflow-x-auto">
+            <pre className="text-sm text-slate-300 font-mono">
+{`{
+  "vendor_name": "Acme Corp",
+  "amount_idr": 72373430.8617793,
+  "hour_of_day": 17,
+  "day_of_week": 2,
+  "is_weekend": 0,
+  "vendor_age_days": 1755,
+  "vendor_tx_count_30d": 1,
+  "amount_vs_vendor_avg": 0.862862135361706,
+  "geographic_deviation": 0.0243153007089859,
+  "tx_velocity_1h": 0,
+  "tx_velocity_24h": 2,
+  "is_round_number": 0,
+  "days_since_last_tx_vendor": 18,
+  "ip_country_match": 1,
+  "duplicate_score": 0.0274491173196333,
+  "vendor_category": "Raw Materials",
+  "department": "Operations",
+  "transaction_type": "Purchase Order",
+  "payment_method": "RTGS",
+  "approval_level": "L1
+}`}
+            </pre>
+          </div>
+        </div>
       </div>
     </div>
   );
