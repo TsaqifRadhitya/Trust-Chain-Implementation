@@ -21,13 +21,18 @@ export default function Sidebar() {
         { name: 'Configuration', path: '/settings', icon: Settings },
       ];
 
-  if (!isPublic && (window as any).localStorage?.getItem('tc_user')) {
+  if (!isPublic && typeof window !== 'undefined' && window.localStorage?.getItem('tc_user')) {
     try {
-      const user = JSON.parse((window as any).localStorage.getItem('tc_user'));
-      if (user?.role === 'superadmin') {
-        items.push({ name: 'User Management', path: '/superadmin/users', icon: Users });
+      const userStr = window.localStorage.getItem('tc_user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user?.role === 'superadmin') {
+          items.push({ name: 'User Management', path: '/superadmin/users', icon: Users });
+        }
       }
-    } catch (e) {}
+    } catch {
+      // ignore parsing error
+    }
   }
 
   return (

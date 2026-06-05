@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Plus, Mail, Shield, User } from 'lucide-react';
 import { useAuth } from '../../../hooks/AuthContext';
@@ -25,7 +25,7 @@ export default function UserManagement() {
     role: 'admin'
   });
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await apiClient.get('/auth/users');
@@ -37,11 +37,12 @@ export default function UserManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +56,9 @@ export default function UserManagement() {
       } else {
         toast(res.data.message || 'Failed to create user', 'error');
       }
-    } catch (e: any) {
-      const errorMessage = e.response?.data?.message || 'An error occurred';
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { message?: string } } };
+      const errorMessage = error.response?.data?.message || 'An error occurred';
       toast(errorMessage, 'error');
     }
   };

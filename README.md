@@ -4,6 +4,58 @@ TrustChain adalah platform sistem informasi terintegrasi berbasis blockchain yan
 
 ## 🏗 Arsitektur Sistem
 
+Berikut adalah diagram desain sistem (*System Architecture*) untuk TrustChain:
+
+```mermaid
+flowchart TB
+    %% Titik Masuk (Entry Point)
+    Client["👤 Client / Browser"] -->|HTTP| Gateway["API Gateway (Nginx)"]
+
+    %% Lapisan Frontend
+    subgraph Frontend ["Frontend Layer"]
+        WebApp["Web Application (React + Vite)"]
+    end
+
+    %% Layanan Backend
+    subgraph Microservices ["Backend Services"]
+        Auth["Auth & Settings Service (Go)"]
+        Explorer["Explorer & Sync Service (Go)"]
+        AI["Model Service (Python / FastAPI)"]
+    end
+
+    %% Sistem Eksternal
+    subgraph External ["External Systems"]
+        Dummy["Dummy ERP Simulator (Go)"]
+    end
+
+    %% Lapisan Data & Infrastruktur
+    subgraph Data ["Data & Infrastructure"]
+        PG[("PostgreSQL")]
+        MQ[["RabbitMQ"]]
+        Chain[("Ganache Blockchain")]
+    end
+
+    %% Routing dari Gateway
+    Gateway -->|/| WebApp
+    Gateway -->|/api/v1/auth| Auth
+    Gateway -->|/api/v1/explorer| Explorer
+    Gateway -->|/api/v1/model| AI
+    Gateway -->|/api/v1/dummy| Dummy
+
+    %% Komunikasi Antar Servis
+    Gateway -.->|Token Validation| Auth
+    Explorer -->|Fetch Transactions| Dummy
+    
+    %% Komunikasi Asinkron (Message Queue)
+    Explorer <-->|Publish & Consume| MQ
+    AI <-->|Publish & Consume| MQ
+
+    %% Interaksi Database & Blockchain
+    Auth -->|Read / Write| PG
+    Explorer -->|Read / Write| PG
+    Explorer -->|Deploy & Log| Chain
+```
+
 Sistem ini dibangun menggunakan arsitektur *Microservices* yang diorkestrasi melalui Docker Compose, dengan komponen-komponen utama sebagai berikut:
 
 ### 1. API Gateway (Nginx)
