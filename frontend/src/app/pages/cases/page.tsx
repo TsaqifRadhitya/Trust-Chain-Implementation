@@ -110,7 +110,7 @@ export default function CaseManagement() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <p className="text-white">{c.partner}</p>
                       <p className="text-xs text-textMuted">{c.txId} • {c.amount}</p>
-                      <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate w-48" title={c.originalHash}>{c.originalHash}</p>
+                      {!isPublic && <p className="text-[10px] text-slate-500 font-mono mt-0.5 truncate w-48" title={c.originalHash}>{c.originalHash}</p>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="flex items-center text-danger"><ShieldAlert className="w-3 h-3 mr-1" />{c.type}</span>
@@ -162,7 +162,7 @@ export default function CaseManagement() {
               </div>
               <div className="mb-6">
                 <p className="text-sm text-textMuted">{selectedCase.partner} • {selectedCase.txId} • {selectedCase.amount}</p>
-                <p className="text-xs text-slate-500 font-mono mt-1 break-all">Hash: {selectedCase.originalHash}</p>
+                {!isPublic && <p className="text-xs text-slate-500 font-mono mt-1 break-all">Hash: {selectedCase.originalHash}</p>}
               </div>
               <div className="space-y-4 mb-6">
                 <div className="bg-danger/10 border border-danger/20 p-4 rounded-xl">

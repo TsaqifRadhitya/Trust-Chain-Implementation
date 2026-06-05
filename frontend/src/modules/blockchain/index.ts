@@ -172,6 +172,7 @@ export async function verifyTx(hash: string): Promise<VerifyTxResponse> {
     }
 
     return {
+      id: tx.hash ? `TX-${tx.hash.substring(2, 8).toUpperCase()}` : '',
       hash: tx.hash,
       status: tx.status === 'success' ? 'Success' : 'Failed',
       timestamp: new Date(tx.timestamp).toLocaleString('en-US', { timeZoneName: 'short' }),

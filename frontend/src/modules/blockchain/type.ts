@@ -28,6 +28,7 @@ export interface TrendData {
 }
 
 export interface VerifyTxResponse {
+  id: string;
   hash: string;
   status: string;
   timestamp: string;

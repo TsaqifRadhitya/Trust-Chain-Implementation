@@ -330,7 +330,58 @@ func (r *blockchainRepository) GetBlockByHashOrHeight(hashOrHeight string) (*dom
 	}, nil
 }
 
+func (r *blockchainRepository) resolveTxHash(query string) (string, error) {
+	queryClean := strings.TrimSpace(query)
+
+	// If it already looks like a full hex hash (starts with 0x and is 66 chars)
+	if strings.HasPrefix(strings.ToLower(queryClean), "0x") && len(queryClean) == 66 {
+		return queryClean, nil
+	}
+
+	// Determine if it's a transaction ID
+	isTxID := false
+	var txIDPart string
+
+	if strings.HasPrefix(strings.ToUpper(queryClean), "TX-") {
+		isTxID = true
+		txIDPart = strings.ToLower(queryClean[3:])
+	} else if len(queryClean) == 6 {
+		// Check if it's 6 hex characters
+		_, err := strconv.ParseUint(queryClean, 16, 64)
+		if err == nil {
+			isTxID = true
+			txIDPart = strings.ToLower(queryClean)
+		}
+	}
+
+	if isTxID {
+		countRes, err := r.callContractRead("getTransactionCount")
+		if err != nil {
+			return "", err
+		}
+		totalCount := countRes[0].(*big.Int).Int64()
+
+		for i := int64(0); i < totalCount; i++ {
+			hashRes, err := r.callContractRead("getTransactionHashAtIndex", big.NewInt(i))
+			if err != nil {
+				continue
+			}
+			txHash := hashRes[0].(string)
+			if len(txHash) >= 8 && strings.ToLower(txHash[2:8]) == txIDPart {
+				return txHash, nil
+			}
+		}
+	}
+
+	return queryClean, nil
+}
+
 func (r *blockchainRepository) GetTransactionByHash(hash string) (*domain.Transaction, error) {
+	resolvedHash, err := r.resolveTxHash(hash)
+	if err == nil {
+		hash = resolvedHash
+	}
+
 	if val, ok := r.txCache.Load(hash); ok {
 		tx := val.(domain.Transaction)
 		return &tx, nil
@@ -427,6 +478,11 @@ func (r *blockchainRepository) GetTransactionByHash(hash string) (*domain.Transa
 }
 
 func (r *blockchainRepository) AddCorrection(txHash string, actualStatus string, reason string, correctedBy string) (*domain.Correction, error) {
+	resolvedHash, err := r.resolveTxHash(txHash)
+	if err == nil {
+		txHash = resolvedHash
+	}
+
 	log.Printf("[Blockchain Repository] Recording correction on blockchain for TxHash: %s (Status: %s)\n", txHash, actualStatus)
 
 	// Record correction on smart contract
@@ -454,7 +510,6 @@ func (r *blockchainRepository) AddCorrection(txHash string, actualStatus string,
 		UpdatedAt:    time.Now(),
 	}, nil
 }
-
 
 func (r *blockchainRepository) GetRecentTransactions(limit int) ([]domain.Transaction, error) {
 	if limit <= 0 {
@@ -578,6 +633,11 @@ func (r *blockchainRepository) RecordTransaction(txHash string, fromAddr string,
 }
 
 func (r *blockchainRepository) UpdateTransactionPrediction(txHash string, isFraud bool, riskScore int, verdict string, flagReason string) (string, error) {
+	resolvedHash, err := r.resolveTxHash(txHash)
+	if err == nil {
+		txHash = resolvedHash
+	}
+
 	riskBig := big.NewInt(int64(riskScore))
 
 	evmHash, err := r.callContractWrite(
@@ -628,7 +688,7 @@ func (r *blockchainRepository) GetStats() (int, int, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	
+
 	totalTxs := int(statsRes[0].(*big.Int).Int64())
 	totalFraud := int(statsRes[1].(*big.Int).Int64())
 	return totalTxs, totalFraud, nil

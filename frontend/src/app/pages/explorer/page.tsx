@@ -173,7 +173,7 @@ export default function BlockchainExplorer() {
             type="text" 
             value={hash}
             onChange={(e) => setHash(e.target.value)}
-            placeholder="Search by Txn Hash..." 
+            placeholder="Search by Txn Hash or Txn ID..." 
             className="flex-1 bg-transparent border-none focus:ring-0 text-white px-4 placeholder-slate-500"
           />
           <button 
@@ -199,7 +199,7 @@ export default function BlockchainExplorer() {
           className="bg-red-500/10 border border-red-500/50 text-red-500 p-6 rounded-2xl text-center"
         >
           <p className="font-bold text-lg">Transaction Not Found</p>
-          <p className="text-sm mt-1">We couldn't find a transaction with the given hash on the TrustChain network.</p>
+          <p className="text-sm mt-1">We couldn't find a transaction with the given hash or ID on the TrustChain network.</p>
         </motion.div>
       )}
 
@@ -215,7 +215,12 @@ export default function BlockchainExplorer() {
                 <CheckCircle className="w-6 h-6 text-success mr-2" />
                 Transaction Verified
               </h2>
-              <p className="text-sm text-textMuted mt-1 break-all">Hash: {data.hash}</p>
+              <div className="mt-1 flex flex-col gap-0.5">
+                <p className="text-sm text-textMuted break-all">
+                  Transaction ID: <span className="text-primary font-mono font-semibold">{data.id || `TX-${data.hash.substring(2, 8).toUpperCase()}`}</span>
+                </p>
+                {!isPublic && <p className="text-xs text-textMuted break-all">Hash: {data.hash}</p>}
+              </div>
             </div>
             <span className="px-3 py-1 bg-success/20 text-success border border-success/30 rounded-full text-xs font-bold uppercase tracking-wide">
               {data.status}
