@@ -1,11 +1,26 @@
 import { useState, useEffect } from 'react';
-import { Save, Link as Database, Key } from 'lucide-react';
+import { Save, Link as Database, Key, Copy, ExternalLink } from 'lucide-react';
 import { useToast } from '../../../components/Toast';
 import { useSettings } from './hooks/useSettings';
+import { useAuth } from '../../hooks/AuthContext';
 
 export default function Configuration() {
   const { toast } = useToast();
   const { config, isLoading, isSaving, save } = useSettings();
+  const { user } = useAuth();
+
+  const companyId = user?.email?.split('@')[0] || 'company';
+  // Use a fallback empty string for SSR or if window is undefined, though React will run this on client
+  const publicLink = typeof window !== 'undefined' ? `${window.location.origin}/public/${companyId}/dashboard` : '';
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(publicLink);
+      toast('Link successfully copied to clipboard!', 'success');
+    } catch {
+      toast('Failed to copy link.', 'error');
+    }
+  };
 
   const [erpType, setErpType] = useState('');
   const [endpoint, setEndpoint] = useState('');
@@ -192,6 +207,31 @@ export default function Configuration() {
               />
               <div className="flex justify-between text-xs text-slate-500 mt-1"><span>Low</span><span>High</span></div>
             </div>
+          </div>
+        </div>
+
+        {/* Public Trial Link */}
+        <div className="bg-surface border border-slate-700/50 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center mr-4">
+                <ExternalLink className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Public Trial Access</h2>
+                <p className="text-sm text-textMuted">Share this link with stakeholders to view the public dashboard.</p>
+              </div>
+            </div>
+            <button
+              onClick={copyToClipboard}
+              className="flex items-center px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium border border-slate-700/50"
+            >
+              <Copy className="w-4 h-4 mr-2 text-slate-400" />
+              Copy Link
+            </button>
+          </div>
+          <div className="bg-slate-900 rounded-lg p-3 border border-slate-700/50 flex items-center overflow-x-auto">
+            <code className="text-sm text-primary whitespace-nowrap">{publicLink}</code>
           </div>
         </div>
 
