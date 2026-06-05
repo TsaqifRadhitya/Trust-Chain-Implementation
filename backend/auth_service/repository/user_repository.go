@@ -40,3 +40,7 @@ func (r *userRepository) GetAll(ctx context.Context) ([]*domain.User, error) {
 	}
 	return users, nil
 }
+
+func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
+	return r.db.WithContext(ctx).Create(user).Error
+}

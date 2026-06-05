@@ -1,5 +1,5 @@
 import { NavLink, useParams } from 'react-router-dom';
-import { LayoutDashboard, ShieldAlert, Link as LinkIcon, FileText, Settings, Hexagon } from 'lucide-react';
+import { LayoutDashboard, ShieldAlert, Link as LinkIcon, FileText, Settings, Hexagon, Users } from 'lucide-react';
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
 
@@ -20,6 +20,15 @@ export default function Sidebar() {
         { name: 'Compliance Reports', path: '/reports', icon: FileText },
         { name: 'Configuration', path: '/settings', icon: Settings },
       ];
+
+  if (!isPublic && (window as any).localStorage?.getItem('tc_user')) {
+    try {
+      const user = JSON.parse((window as any).localStorage.getItem('tc_user'));
+      if (user?.role === 'superadmin') {
+        items.push({ name: 'User Management', path: '/superadmin/users', icon: Users });
+      }
+    } catch (e) {}
+  }
 
   return (
     <div className="hidden md:flex flex-col w-64 bg-surface border-r border-slate-700/50 h-full">

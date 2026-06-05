@@ -91,33 +91,46 @@ func ConnectDatabase() {
 }
 
 func SeedDatabase() {
-	var count int64
-	DB.Model(&domain.User{}).Count(&count)
+	log.Println("Memulai verifikasi seeding database...")
 
-	if count == 0 {
-		log.Println("Memulai seeding database...")
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("Gagal melakukan hashing password seeder: %v\n", err)
+		return
+	}
 
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
-		if err != nil {
-			log.Printf("Gagal melakukan hashing password seeder: %v\n", err)
-			return
-		}
+	adminUser := domain.User{
+		Email:    "admin@trustchain.com",
+		Name:     "Admin TrustChain",
+		Password: string(hashedPassword),
+		Role:     "admin",
+	}
 
-		adminUser := domain.User{
-			Email:    "admin@trustchain.com",
-			Name:     "Admin TrustChain",
-			Password: string(hashedPassword),
-		}
+	superAdminUser := domain.User{
+		Email:    "superadmin@trustchain.com",
+		Name:     "Super Admin TrustChain",
+		Password: string(hashedPassword),
+		Role:     "superadmin",
+	}
 
-		err = DB.Create(&adminUser).Error
-		if err != nil {
-			log.Printf("Gagal seeding admin user: %v\n", err)
-			return
-		}
+	err = DB.Where(domain.User{Email: adminUser.Email}).FirstOrCreate(&adminUser).Error
+	if err != nil {
+		log.Printf("Gagal seeding admin user: %v\n", err)
+	} else {
+		log.Printf("Seeding admin user terverifikasi! (Email: %s)\n", adminUser.Email)
+	}
 
-		log.Printf("Seeding admin user berhasil! (Email: %s, Password: password123)\n", adminUser.Email)
+	err = DB.Where(domain.User{Email: superAdminUser.Email}).FirstOrCreate(&superAdminUser).Error
+	if err != nil {
+		log.Printf("Gagal seeding super admin user: %v\n", err)
+	} else {
+		log.Printf("Seeding super admin user terverifikasi! (Email: %s)\n", superAdminUser.Email)
+	}
 
-		// Seed default settings untuk user admin ini
+	// Seed default settings untuk user admin ini
+	var configCount int64
+	DB.Model(&domain.Configuration{}).Where("user_id = ?", adminUser.ID).Count(&configCount)
+	if configCount == 0 && adminUser.ID != 0 {
 		defaultConfig := domain.Configuration{
 			UserID:            adminUser.ID,
 			ErpType:           "SAP S/4HANA",
@@ -131,10 +144,8 @@ func SeedDatabase() {
 		err = DB.Create(&defaultConfig).Error
 		if err != nil {
 			log.Printf("Gagal seeding default configuration: %v\n", err)
-			return
+		} else {
+			log.Println("Seeding default configuration berhasil!")
 		}
-		log.Println("Seeding default configuration berhasil!")
-	} else {
-		log.Println("Database sudah memiliki data, melewati seeder.")
 	}
 }

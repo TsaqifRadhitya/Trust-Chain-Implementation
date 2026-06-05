@@ -147,3 +147,28 @@ func (u *authUsecase) GetUserByID(ctx context.Context, id uint) (*domain.User, e
 func (u *authUsecase) GetAllUsers(ctx context.Context) ([]*domain.User, error) {
 	return u.userRepo.GetAll(ctx)
 }
+
+func (u *authUsecase) CreateUser(ctx context.Context, email, password, name, role string) (*domain.User, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	if role == "" {
+		role = "admin" // Default to admin for new users if not specified
+	}
+
+	user := &domain.User{
+		Email:    email,
+		Password: string(hashedPassword),
+		Name:     name,
+		Role:     role,
+	}
+
+	err = u.userRepo.Create(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}

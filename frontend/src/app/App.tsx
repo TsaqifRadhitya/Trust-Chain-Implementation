@@ -11,6 +11,7 @@ import CaseManagement from "./pages/cases/page";
 import Configuration from "./pages/settings/page";
 import BlockchainExplorer from "./pages/explorer/page";
 import Reports from "./pages/reports/page";
+import UserManagement from "./pages/superadmin/users/page";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ function App() {
                   <Route path="/explorer" element={<BlockchainExplorer />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings" element={<Configuration />} />
+                  <Route path="/superadmin/users" element={<UserManagement />} />
                 </Route>
               </Route>
 

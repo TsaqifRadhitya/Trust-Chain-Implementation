@@ -23,6 +23,12 @@ func NewAuthHandler(r *gin.RouterGroup, u domain.AuthUsecase) {
 	// Internal routes (no auth middleware)
 	r.GET("/internal/users", handler.GetAllUsers)
 	r.GET("/internal/users/:id", handler.GetUserByID)
+
+	// Protected routes
+	protected := r.Group("/auth")
+	protected.Use(middleware.JWTAuthMiddleware())
+	protected.POST("/users", handler.CreateUser)
+	protected.GET("/users", handler.GetAllUsers) // Expose to frontend for superadmin
 }
 
 type LoginRequest struct {
@@ -64,6 +70,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			"user": gin.H{
 				"email": user.Email,
 				"name":  user.Name,
+				"role":  user.Role,
 			},
 		},
 	})
@@ -164,6 +171,7 @@ func (h *AuthHandler) GetAllUsers(c *gin.Context) {
 			"id":    user.ID,
 			"email": user.Email,
 			"name":  user.Name,
+			"role":  user.Role,
 		})
 	}
 
@@ -176,5 +184,58 @@ func (h *AuthHandler) GetAllUsers(c *gin.Context) {
 		"status":  http.StatusOK,
 		"message": "Users found",
 		"data":    responseData,
+	})
+}
+
+type CreateUserRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+	Name     string `json:"name" binding:"required"`
+	Role     string `json:"role"`
+}
+
+func (h *AuthHandler) CreateUser(c *gin.Context) {
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": http.StatusUnauthorized, "message": "Unauthorized"})
+		return
+	}
+
+	// Check if the current user is a superadmin
+	currentUser, err := h.authUsecase.GetUserByID(c.Request.Context(), userId.(uint))
+	if err != nil || currentUser.Role != "superadmin" {
+		c.JSON(http.StatusForbidden, gin.H{"status": http.StatusForbidden, "message": "Only superadmin can create users"})
+		return
+	}
+
+	var req CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  http.StatusBadRequest,
+			"message": "Invalid request payload",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	newUser, err := h.authUsecase.CreateUser(c.Request.Context(), req.Email, req.Password, req.Name, req.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status":  http.StatusInternalServerError,
+			"message": "Failed to create user",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"status":  http.StatusCreated,
+		"message": "User created successfully",
+		"data": gin.H{
+			"id":    newUser.ID,
+			"email": newUser.Email,
+			"name":  newUser.Name,
+			"role":  newUser.Role,
+		},
 	})
 }

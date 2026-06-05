@@ -19,6 +19,7 @@ export async function loginUser(email: string, password: string): Promise<LoginR
       user: {
         email: user.email,
         name: user.name,
+        role: user.role,
       },
     };
   } catch (error: unknown) {
