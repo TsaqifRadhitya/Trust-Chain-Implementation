@@ -42,8 +42,9 @@ export async function fetchReports(): Promise<Report[]> {
     const pending = anomalies - resolved;
 
     // Build BI Risk Index CSV content
-    let csvContent = 'date,partner,risk_score,status\n';
-    txs.slice(0, 10).forEach(tx => {
+    let csvContent = 'transaction_hash,date,partner,amount_idr,risk_score,status,flag_reason\n';
+    txs.forEach(tx => {
+      const hash = tx.hash;
       const date = new Date(tx.timestamp).toISOString().split('T')[0];
       let partner = tx.to || 'Unknown Vendor';
       const dataStr = tx.model_result ? tx.model_result.data : tx.data;
@@ -62,7 +63,11 @@ export async function fetchReports(): Promise<Report[]> {
       } else if (risk >= 30) {
         status = 'warning';
       }
-      csvContent += `${date},${partner.replace(/,/g, '')},${risk},${status}\n`;
+      
+      const type = tx.model_result ? (tx.model_result.flag_reason || tx.model_result.verdict) : (tx.flag_reason || tx.verdict);
+      const flagReason = type || 'None';
+
+      csvContent += `${hash},${date},${partner.replace(/,/g, '')},${tx.value},${risk},${status},${flagReason.replace(/,/g, '')}\n`;
     });
 
     const currentDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -115,7 +120,7 @@ export async function fetchReports(): Promise<Report[]> {
         iconName: 'TrendingUp',
         color: 'text-success',
         bg: 'bg-success/10',
-        content: 'date,partner,risk_score,status\n2026-04-20,Neo Supply,89,flagged\n2026-04-20,Apex Corp,72,warning\n2026-04-20,LogisX Energy,12,safe',
+        content: 'transaction_hash,date,partner,amount_idr,risk_score,status,flag_reason\n0xa1b2c3...,2026-04-20,Neo Supply,2100000000,89,flagged,Volume Anomaly\n0xd4e5f6...,2026-04-20,Apex Corp,450000000,72,warning,Velocity Check\n0x7a8b9c...,2026-04-20,LogisX Energy,12000000,12,safe,None',
       },
       {
         title: 'Internal Audit Trail - March',

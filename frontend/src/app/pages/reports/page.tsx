@@ -2,6 +2,8 @@ import { FileText, Download, TrendingUp, ShieldCheck } from 'lucide-react';
 import { useToast } from '../../../components/Toast';
 import { useReports } from './hooks/useReports';
 import type { Report } from '../../../modules/report/type';
+import { jsPDF } from 'jspdf';
+import { generateOJKReport, generateInternalAuditReport } from './pdfGenerator';
 
 const ICON_MAP = {
   ShieldCheck: ShieldCheck,
@@ -13,19 +15,47 @@ export default function Reports() {
   const { toast } = useToast();
   const { reports, isLoading } = useReports();
 
-  const handleDownload = (report: Report) => {
-    const mimeType = report.type === 'PDF' ? 'application/pdf' : 'text/csv';
+  const handleDownload = async (report: Report) => {
     const fileName = `${report.title.replace(/\s+/g, '_')}.${report.type.toLowerCase()}`;
-    const blob = new Blob([report.content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast(`${fileName} berhasil diunduh!`, 'success');
+
+    if (report.type === 'PDF') {
+      try {
+        if (report.title.includes('OJK')) {
+          await generateOJKReport(report);
+          toast(`${fileName} berhasil diunduh!`, 'success');
+        } else if (report.title.includes('Internal Audit')) {
+          await generateInternalAuditReport(report);
+          toast(`${fileName} berhasil diunduh!`, 'success');
+        } else {
+          const doc = new jsPDF();
+          
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(16);
+          doc.text(report.title, 20, 20);
+          
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(12);
+          const lines = doc.splitTextToSize(report.content, 170);
+          doc.text(lines, 20, 30);
+          
+          doc.save(fileName);
+          toast(`${fileName} berhasil diunduh!`, 'success');
+        }
+      } catch (e) {
+        toast(`Gagal membuat PDF: ${(e as Error).message}`, 'error');
+      }
+    } else {
+      const blob = new Blob([report.content], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast(`${fileName} berhasil diunduh!`, 'success');
+    }
   };
 
   return (
